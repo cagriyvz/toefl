@@ -19,7 +19,10 @@ from pydantic import BaseModel
 from typing import Optional
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DB   = os.path.join(HERE, "toefl.db")
+# Kalıcı disk varsa (ör. Render volume) TOEFL_DB_DIR ile yönlendir; yoksa yerel.
+DB_DIR = os.environ.get("TOEFL_DB_DIR", HERE)
+os.makedirs(DB_DIR, exist_ok=True)
+DB   = os.path.join(DB_DIR, "toefl.db")
 FRONTEND = os.path.abspath(os.path.join(HERE, ".."))   # toefl/ klasörü
 
 # ---------------------------------------------------------------- DB
@@ -230,3 +233,9 @@ def leaderboard():
 
 # ---- statik frontend (API yollarından SONRA mount edilmeli) ----------------
 app.mount("/", StaticFiles(directory=FRONTEND, html=True), name="frontend")
+
+# ---- doğrudan çalıştırma: python server.py  (PORT env'i kullanılır) --------
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", "8000"))
+    uvicorn.run(app, host="0.0.0.0", port=port)

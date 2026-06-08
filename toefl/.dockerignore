@@ -1,0 +1,7 @@
+backend/toefl.db
+backend/toefl.db-wal
+backend/toefl.db-shm
+backend/__pycache__
+**/__pycache__
+**/*.pyc
+backend/venv
