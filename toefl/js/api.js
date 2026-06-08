@@ -56,16 +56,21 @@ const API = (() => {
     catch(_) { online=false; }
     return online;
   }
-  async function register(email,password,name){ const r=await call("/api/register",{method:"POST",body:JSON.stringify({email,password,name})}); _store(r); return r; }
+  async function register(firstName,lastName,email,password){ const r=await call("/api/register",{method:"POST",body:JSON.stringify({firstName,lastName,email,password})}); _store(r); return r; }
   async function login(email,password){ const r=await call("/api/login",{method:"POST",body:JSON.stringify({email,password})}); _store(r); return r; }
   async function logout(){ try{ await call("/api/logout",{method:"POST"}); }catch(_){} _clear(); }
   async function me(){ return call("/api/me"); }
   async function saveAttempt(a){ return call("/api/attempt",{method:"POST",body:JSON.stringify(a)}); }
   async function logEvent(type,data){ try{ return await call("/api/event",{method:"POST",body:JSON.stringify({type,data})}); }catch(_){ } }
   async function leaderboard(){ return call("/api/leaderboard"); }
+  async function explain(prompt){ return call("/api/explain",{method:"POST",body:JSON.stringify({prompt})}); }
+  async function adminUsers(){ return call("/api/admin/users"); }
+  async function adminUserDetail(id){ return call("/api/admin/user/"+id); }
+  async function adminStats(){ return call("/api/admin/stats"); }
 
   return { setBase, clearBase, base:()=>base, enabled, isOnline, authed, user:()=>user,
-           health, register, login, logout, me, saveAttempt, logEvent, leaderboard };
+           health, register, login, logout, me, saveAttempt, logEvent, leaderboard,
+           explain, adminUsers, adminUserDetail, adminStats };
 })();
 
 if (typeof module!=="undefined") module.exports = { API };

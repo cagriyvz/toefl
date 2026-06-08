@@ -60,6 +60,7 @@ const App = (() => {
   function esc(s){ return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
   const LETTERS = ["A","B","C","D"];
   function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+  function rnd(a){ return a[Math.floor(Math.random()*a.length)]; }
   function isCorrect(q, ans){ return q.type==="mc" ? ans===q.answer : ans===q.answer; }
   function answerLabel(q, ans){ return q.type==="mc" ? (ans==null?"—":LETTERS[ans]+") "+q.options[ans]) : (ans||"—"); }
 
@@ -87,6 +88,11 @@ const App = (() => {
     if (route==="auth") return renderAuth(arg);
     if (route==="leaderboard") return renderLeaderboard();
     if (route==="account") return renderAccount();
+    if (route==="vocab") return renderVocabIntro();
+    if (route==="vocabflash") return startVocabFlash();
+    if (route==="vocabquiz") return startVocabQuiz();
+    if (route==="admin") return renderAdmin();
+    if (route==="adminuser") return renderAdminUser(arg);
   }
 
   // --- HOME --------------------------------------------------------------
@@ -231,12 +237,12 @@ const App = (() => {
     const exam = Q.mode==="exam";
 
     const titles = { practice:"Skill "+Q.skillId, diagnostic:"Tanı Testi",
-                     exam:"Tam Deneme", review:"Tekrar Havuzu" };
+                     exam:"Tam Deneme", review:"Tekrar Havuzu", vocabquiz:"Kelime Quizi" };
     const body = q.type==="mc" ? mcMarkup(q, exam) : errMarkup(q, exam);
 
     const backTargets = {
       practice:`App.go('lesson',${Q.skillId})`, diagnostic:"App.go('home')",
-      exam:"App.confirmQuit()", review:"App.go('home')"
+      exam:"App.confirmQuit()", review:"App.go('home')", vocabquiz:"App.go('vocab')"
     };
 
     const timer = exam ? `<span class="timer" id="timer">${fmtLeft()}</span>` : "";
@@ -331,9 +337,31 @@ const App = (() => {
     const detail = q.explain || q.correction || "";
     const fb = document.getElementById("fb");
     fb.className = "feedback show " + (ok?"ok":"no");
+    const aiBtn = API.authed()
+      ? `<div class="ai-box"><button class="btn sec sm" onclick="App.aiExplain()">🤖 AI ile daha detaylı açıkla</button><div id="ai-out"></div></div>`
+      : "";
     fb.innerHTML = `<span class="res ${ok?'ok':'no'}">${ok?'✓ Doğru':'✗ Yanlış'}</span>
-      <b>${ok?'Özet':'Doğru cevap & özet'}</b>${esc(detail)}${breakdownHTML(q, ans)}`;
+      <b>${ok?'Özet':'Doğru cevap & özet'}</b>${esc(detail)}${breakdownHTML(q, ans)}${aiBtn}`;
     document.getElementById("nextBtn").style.display = "inline-block";
+  }
+
+  // --- AI AÇIKLAMA (ücretsiz sağlayıcı; sunucuda AI_API_KEY varsa) --------
+  function questionToPrompt(q){
+    if(q.type==="mc"){
+      return `Soru: ${q.stem}\nŞıklar:\n`+q.options.map((o,i)=>`${LETTERS[i]}) ${o}`).join("\n")
+        +`\nDoğru cevap: ${LETTERS[q.answer]}.\nBu şık neden doğru, diğer şıklar neden yanlış? Gramer kuralını da kısaca hatırlat.`;
+    }
+    const sent=q.segments.map(s=>s.plain!==undefined?s.plain:`[${s.choice}: ${s.text}]`).join("");
+    return `Aşağıdaki cümlede altı çizili 4 bölüm köşeli parantezde verildi:\n${sent}\nHatalı bölüm: ${q.answer}. Düzeltme: ${q.correction||""}.\nNeden hatalı, diğer bölümler neden doğru? Kuralı kısaca açıkla.`;
+  }
+  async function aiExplain(){
+    const out=document.getElementById("ai-out"); if(!out||!Q) return;
+    out.innerHTML=`<span class="cat">🤖 AI düşünüyor…</span>`;
+    try{
+      const r=await API.explain(questionToPrompt(Q.questions[Q.idx]));
+      if(r&&r.ok&&r.text) out.innerHTML=`<div class="ai-text">${esc(r.text).replace(/\n/g,"<br>")}</div>`;
+      else out.innerHTML=`<span class="cat">${esc((r&&r.reason)||"AI şu an kullanılamıyor")}. Yukarıdaki şık şık açıklamayı kullanabilirsin.</span>`;
+    }catch(e){ out.innerHTML=`<span class="cat">AI hatası: ${esc(e.message)}</span>`; }
   }
 
   // Her şık için detaylı açıklama bloğu
@@ -374,6 +402,7 @@ const App = (() => {
     if (Q.mode==="exam") return finishExam();
     if (Q.mode==="diagnostic") return finishDiagnostic();
     if (Q.mode==="review") return finishReview();
+    if (Q.mode==="vocabquiz") return finishVocab();
     finishPractice();
   }
 
@@ -576,8 +605,11 @@ const App = (() => {
         <h2>${reg?"📝 Kayıt Ol":"🔑 Giriş Yap"}</h2>
         <p class="cat">${apiInfo}</p>
         <div class="form">
-          ${reg?`<label>Ad<input id="au-name" placeholder="Adın" autocomplete="name"></label>`:""}
-          <label>E-posta<input id="au-email" type="email" placeholder="ornek@mail.com" autocomplete="email"></label>
+          ${reg?`<div class="form-row">
+            <label>Ad<input id="au-first" placeholder="Adın" autocomplete="given-name"></label>
+            <label>Soyad<input id="au-last" placeholder="Soyadın" autocomplete="family-name"></label>
+          </div>`:""}
+          <label>E-posta (gmail)<input id="au-email" type="email" placeholder="ornek@gmail.com" autocomplete="email"></label>
           <label>Şifre<input id="au-pass" type="password" placeholder="••••••" autocomplete="${reg?'new-password':'current-password'}"></label>
           <div class="form-err" id="au-err"></div>
           <button class="btn" id="au-submit" onclick="App.submitAuth('${mode}')">${reg?"Kayıt ol":"Giriş yap"}</button>
@@ -603,34 +635,75 @@ const App = (() => {
     const err=document.getElementById("au-err");
     const email=document.getElementById("au-email").value.trim();
     const pass=document.getElementById("au-pass").value;
-    const name=mode==="register"?(document.getElementById("au-name").value.trim()):"";
     err.textContent="";
     if(!API.enabled()){ err.textContent="Sunucu ayarlı değil. Aşağıdan adres gir ya da misafir modda devam et."; return; }
-    const btn=document.getElementById("au-submit"); btn.disabled=true; btn.textContent="...";
-    try{
-      if(mode==="register") await API.register(email,pass,name||email.split("@")[0]);
-      else await API.login(email,pass);
-      await syncFromServer();
-      go("home");
-    }catch(e){ err.textContent=e.message||"Hata"; btn.disabled=false; btn.textContent=mode==="register"?"Kayıt ol":"Giriş yap"; }
+    if(mode==="register"){
+      const fn=document.getElementById("au-first").value.trim();
+      const ln=document.getElementById("au-last").value.trim();
+      if(!fn){ err.textContent="Ad gerekli."; return; }
+      const btn=document.getElementById("au-submit"); btn.disabled=true; btn.textContent="...";
+      try{ await API.register(fn,ln,email,pass); await syncFromServer(); go("home"); }
+      catch(e){ err.textContent=e.message||"Hata"; btn.disabled=false; btn.textContent="Kayıt ol"; }
+    } else {
+      const btn=document.getElementById("au-submit"); btn.disabled=true; btn.textContent="...";
+      try{ await API.login(email,pass); await syncFromServer(); go("home"); }
+      catch(e){ err.textContent=e.message||"Hata"; btn.disabled=false; btn.textContent="Giriş yap"; }
+    }
   }
   async function syncFromServer(){
     if(!API.authed()) return;
     try{ const r=await API.me(); if(r&&r.progress) mergeServerProgress(r.progress); }catch(_){}
   }
+  // --- PROFİL (zengin) ---------------------------------------------------
   function renderAccount(){
     const u=API.user();
+    if(!u){ return go("auth"); }
+    const initials = ((u.firstName||u.name||"?").charAt(0)+(u.lastName||"").charAt(0)).toUpperCase();
     view().innerHTML = `
       <button class="back" onclick="App.go('home')">← Ana sayfa</button>
-      <div class="card auth-card">
-        <h2>👤 Hesabım</h2>
-        <p>Giriş yapıldı: <b>${esc(u?u.name:"")}</b> <span class="cat">(${esc(u?u.email:"")})</span></p>
-        <p class="cat">İlerlemen ve denemelerin sunucuya kaydediliyor; her cihazdan erişebilirsin.</p>
-        <div class="lesson-actions">
-          <button class="btn sec" onclick="App.go('leaderboard')">🏆 Lider Tablosu</button>
-          <button class="btn sec" onclick="App.go('progress')">📊 İlerlemem</button>
-          <button class="btn" onclick="App.doLogout()">Çıkış yap</button>
+      <div class="card profile-head">
+        <div class="avatar">${esc(initials)}</div>
+        <div>
+          <h2 style="margin:0">${esc(u.name)}</h2>
+          <div class="cat">${esc(u.email)} ${u.isAdmin?'· <span class="badge-admin">Yönetici</span>':''}</div>
         </div>
+        <button class="btn sec sm" style="margin-left:auto" onclick="App.doLogout()">Çıkış</button>
+      </div>
+      <div id="prof-body"><p class="empty">İlerleme yükleniyor…</p></div>`;
+    loadProfile();
+  }
+  async function loadProfile(){
+    let prog = progress;
+    if(API.authed()){ try{ const r=await API.me(); if(r&&r.progress){ mergeServerProgress(r.progress); prog=r.progress; } }catch(_){} }
+    const el=document.getElementById("prof-body"); if(!el) return;
+    const total=totalSkills();
+    const strong=(prog.strongSkills)||Object.entries(progress.skills).filter(([k,v])=>v.done).map(([k])=>+k);
+    const weak=(prog.weakSkills)||Object.entries(progress.skills).filter(([k,v])=>v.best&&v.best<70).map(([k])=>+k);
+    const done=strong.length;
+    const examBest=prog.examBest!=null?prog.examBest:(progress.examBest!=null?progress.examBest:null);
+    const vocabKnown=(JSON.parse(localStorage.getItem("toefl_vocab")||"{}").known||[]).length;
+    const skillChip=id=>`<a class="chip" href="#" onclick="App.go('lesson',${id});return false">Skill ${id} · ${esc(CURRICULUM.skills[id].title)}</a>`;
+    const hist=(prog.examHistory||[]).slice().reverse().slice(0,8).map(h=>{
+      const d=new Date(h.date*1000||h.date); return `<div class="hist-row"><span>${h.correct}/${h.total} (${h.score}%)</span><small>${isNaN(d)?'':d.toLocaleDateString('tr-TR')}</small></div>`;
+    }).join("") || `<p class="cat">Henüz tam deneme yok.</p>`;
+    el.innerHTML = `
+      <div class="hero-row" style="margin:0 0 18px">
+        <div class="stat"><b>${done}/${total}</b><span>Tamamlanan beceri</span></div>
+        <div class="stat"><b>${examBest!=null?examBest+"%":"—"}</b><span>En iyi deneme</span></div>
+        <div class="stat"><b>${prog.completedExams||0}</b><span>Tam deneme</span></div>
+        <div class="stat"><b>${prog.totalAttempts||0}</b><span>Toplam çözüm</span></div>
+        <div class="stat"><b>${vocabKnown}</b><span>Bilinen kelime</span></div>
+      </div>
+      <div class="section-title">💪 Güçlü olduğun konular (${strong.length})</div>
+      <div class="chips">${strong.length?strong.map(skillChip).join(""):'<span class="cat">Henüz tamamlanan konu yok.</span>'}</div>
+      <div class="section-title">📌 Eksiklerin / tekrar etmen gerekenler (${weak.length})</div>
+      <div class="chips">${weak.length?weak.map(skillChip).join(""):'<span class="cat">Belirgin eksik görünmüyor. 👏</span>'}</div>
+      <div class="section-title">📝 Son deneme sonuçların</div>
+      <div class="hist">${hist}</div>
+      <div class="lesson-actions" style="margin-top:18px">
+        <button class="btn" onclick="App.go('progress')">📊 Detaylı ilerleme</button>
+        <button class="btn sec" onclick="App.go('review')">🔁 Tekrar havuzu (${progress.wrong.length})</button>
+        ${API.user()&&API.user().isAdmin?`<button class="btn sec" onclick="App.go('admin')">🛠️ Admin paneli</button>`:''}
       </div>`;
   }
   async function doLogout(){ await API.logout(); go("home"); }
@@ -657,11 +730,161 @@ const App = (() => {
     }catch(e){ set(`<p class="empty">Yüklenemedi: ${esc(e.message)}</p>`); }
   }
 
-  // --- Üst menü hesap düğmesi (her render'da güncellenir) -----------------
+  // --- Üst menü hesap + admin düğmesi (her render'da güncellenir) ---------
   function refreshAccountNav(){
-    const el=document.getElementById("nav-account"); if(!el) return;
-    if(API.authed()){ const u=API.user(); el.innerHTML=`<button onclick="App.go('account')">👤 ${esc((u&&u.name)||"Hesap")}</button>`; }
+    const el=document.getElementById("nav-account");
+    const ad=document.getElementById("nav-admin");
+    if(ad){ const u=API.user(); ad.innerHTML=(API.authed()&&u&&u.isAdmin)?`<button onclick="App.go('admin')">🛠️ Admin</button>`:""; }
+    if(!el) return;
+    if(API.authed()){ const u=API.user(); el.innerHTML=`<button onclick="App.go('account')">👤 ${esc((u&&u.firstName)||(u&&u.name)||"Hesap")}</button>`; }
     else { el.innerHTML=`<button onclick="App.go('auth')">Giriş / Kayıt</button>`; }
+  }
+
+  // --- ADMIN PANELİ ------------------------------------------------------
+  async function renderAdmin(){
+    if(!(API.authed()&&API.user()&&API.user().isAdmin)){ return go("home"); }
+    view().innerHTML=`<button class="back" onclick="App.go('home')">← Ana sayfa</button>
+      <div class="hero"><h1>🛠️ Admin Paneli</h1><p>Tüm üyeler, bilgileri ve gelişimleri.</p>
+        <div class="hero-row" id="adm-stats"></div></div>
+      <div class="section-title">Üyeler</div>
+      <div id="adm-users"><p class="empty">Yükleniyor…</p></div>`;
+    try{
+      const st=await API.adminStats();
+      const s=document.getElementById("adm-stats");
+      if(s) s.innerHTML=`
+        <div class="stat"><b>${st.users}</b><span>Üye</span></div>
+        <div class="stat"><b>${st.activeWeek}</b><span>Bu hafta aktif</span></div>
+        <div class="stat"><b>${st.attempts}</b><span>Toplam çözüm</span></div>
+        <div class="stat"><b>${st.exams}</b><span>Tam deneme</span></div>`;
+      const r=await API.adminUsers();
+      const body=document.getElementById("adm-users"); if(!body) return;
+      const rows=r.users.map(u=>`
+        <div class="adm-row" onclick="App.go('adminuser',${u.id})">
+          <div class="adm-main"><b>${esc(u.name||"—")}</b>${u.isAdmin?' <span class="badge-admin">admin</span>':''}
+            <small>${esc(u.email)}</small></div>
+          <span class="adm-stat">${u.examBest!=null?u.examBest+"%":"—"}<small>deneme</small></span>
+          <span class="adm-stat">${u.skillsDone}<small>beceri</small></span>
+          <span class="adm-stat">${u.attempts}<small>çözüm</small></span>
+          <span class="adm-stat">${fmtAgo(u.lastSeen)}<small>son</small></span>
+        </div>`).join("") || `<p class="empty">Henüz üye yok.</p>`;
+      body.innerHTML=`<div class="adm-head"><span>Üye</span><span>Deneme</span><span>Beceri</span><span>Çözüm</span><span>Son</span></div>${rows}`;
+    }catch(e){ const b=document.getElementById("adm-users"); if(b) b.innerHTML=`<p class="empty">Yüklenemedi: ${esc(e.message)}</p>`; }
+  }
+  function fmtAgo(ts){ if(!ts) return "—"; const d=(Date.now()/1000-ts); if(d<3600)return Math.round(d/60)+"dk"; if(d<86400)return Math.round(d/3600)+"sa"; return Math.round(d/86400)+"g"; }
+  function fmtDate(ts){ if(!ts) return "—"; const d=new Date(ts*1000); return isNaN(d)?"—":d.toLocaleString("tr-TR"); }
+
+  async function renderAdminUser(id){
+    if(!(API.authed()&&API.user()&&API.user().isAdmin)){ return go("home"); }
+    view().innerHTML=`<button class="back" onclick="App.go('admin')">← Admin paneli</button><div id="adu"><p class="empty">Yükleniyor…</p></div>`;
+    try{
+      const d=await API.adminUserDetail(id);
+      const p=d.progress, u=d.user;
+      const strong=(p.strongSkills||[]).map(s=>`Skill ${s}`).join(", ")||"—";
+      const weak=(p.weakSkills||[]).map(s=>`Skill ${s}`).join(", ")||"—";
+      const attempts=d.attempts.slice(0,30).map(a=>`<div class="hist-row"><span>${esc(a.mode)}${a.skill?(" · skill "+a.skill):""} — ${a.correct}/${a.total} (${a.score}%)</span><small>${fmtDate(a.created)}</small></div>`).join("")||`<p class="cat">Çözüm yok.</p>`;
+      const events=d.events.slice(0,30).map(e=>`<div class="hist-row"><span>${esc(e.type)}</span><small>${fmtDate(e.created)}</small></div>`).join("")||`<p class="cat">Log yok.</p>`;
+      const el=document.getElementById("adu"); if(!el) return;
+      el.innerHTML=`
+        <div class="card profile-head">
+          <div class="avatar">${esc(((u.firstName||"?").charAt(0)+(u.lastName||"").charAt(0)).toUpperCase())}</div>
+          <div><h2 style="margin:0">${esc(u.name)}</h2><div class="cat">${esc(u.email)} ${u.isAdmin?'· <span class="badge-admin">admin</span>':''}</div>
+          <div class="cat">Kayıt: ${fmtDate(d.created)} · Son görülme: ${fmtDate(d.lastSeen)}</div></div>
+        </div>
+        <div class="hero-row" style="margin:14px 0">
+          <div class="stat"><b>${(p.strongSkills||[]).length}</b><span>Beceri</span></div>
+          <div class="stat"><b>${p.examBest!=null?p.examBest+"%":"—"}</b><span>En iyi deneme</span></div>
+          <div class="stat"><b>${p.completedExams||0}</b><span>Deneme</span></div>
+          <div class="stat"><b>${p.totalAttempts||0}</b><span>Çözüm</span></div>
+        </div>
+        <div class="section-title">💪 Güçlü</div><p>${esc(strong)}</p>
+        <div class="section-title">📌 Eksik</div><p>${esc(weak)}</p>
+        <div class="section-title">📝 Son çözümler</div><div class="hist">${attempts}</div>
+        <div class="section-title">🧾 Son loglar</div><div class="hist">${events}</div>`;
+    }catch(e){ const el=document.getElementById("adu"); if(el) el.innerHTML=`<p class="empty">Yüklenemedi: ${esc(e.message)}</p>`; }
+  }
+
+  // --- KELİME ÇALIŞMASI --------------------------------------------------
+  const HAS_VOCAB = (typeof VOCAB !== "undefined");
+  function loadVocab(){ try{ return JSON.parse(localStorage.getItem("toefl_vocab"))||{known:[]}; }catch{ return {known:[]}; } }
+  function saveVocabState(v){ localStorage.setItem("toefl_vocab", JSON.stringify(v)); }
+  function markKnown(word, known){ const v=loadVocab(); const s=new Set(v.known); known?s.add(word):s.delete(word); v.known=[...s]; saveVocabState(v); }
+
+  function renderVocabIntro(){
+    const known=loadVocab().known.length;
+    const total=HAS_VOCAB?VOCAB.length:0;
+    view().innerHTML=`<button class="back" onclick="App.go('home')">← Ana sayfa</button>
+      <div class="hero"><h1>📚 Kelime Çalışması</h1>
+        <p>TOEFL'da sık çıkan ${total} akademik kelime. Kartlarla öğren, quizle pekiştir.</p>
+        <div class="hero-row">
+          <div class="stat"><b>${known}/${total}</b><span>Bilinen kelime</span></div>
+          <div class="stat"><b>${Math.round(known/Math.max(total,1)*100)}%</b><span>İlerleme</span></div>
+        </div>
+        <div class="lesson-actions">
+          <button class="btn" onclick="App.go('vocabflash')">🃏 Kartlarla öğren</button>
+          <button class="btn sec" onclick="App.go('vocabquiz')">📝 Kelime quizi (10 soru)</button>
+        </div>
+      </div>`;
+  }
+
+  // Flashcards
+  let VF=null;
+  function startVocabFlash(){ VF={ list:shuffle(VOCAB.slice()), idx:0, revealed:false, learned:0 }; paintFlash(); }
+  function paintFlash(){
+    if(VF.idx>=VF.list.length){
+      view().innerHTML=ringCard(100,"Kart turu bitti 🃏",`${VF.list.length} kelime gözden geçirildi`)+`
+        <div class="lesson-actions" style="justify-content:center;margin-top:18px">
+          <button class="btn" onclick="App.go('vocabflash')">Yeniden karıştır</button>
+          <button class="btn sec" onclick="App.go('vocabquiz')">Quize geç</button>
+          <button class="btn sec" onclick="App.go('vocab')">Kelime ana sayfa</button></div>`;
+      return;
+    }
+    const w=VF.list[VF.idx]; const known=loadVocab().known.includes(w.w);
+    view().innerHTML=`<button class="back" onclick="App.go('vocab')">← Kelime</button>
+      <div class="card flash" onclick="App.flashReveal()">
+        <div class="flash-top"><span class="qcount">${VF.idx+1} / ${VF.list.length}</span>
+          ${known?'<span class="pill struct">biliyorum</span>':''}</div>
+        <div class="flash-word">${esc(w.w)}</div>
+        <div class="flash-pos">${esc(w.pos)}</div>
+        ${VF.revealed?`<div class="flash-mean">${esc(w.tr)}</div><div class="flash-ex">“${esc(w.ex)}”</div>`
+                     :`<div class="flash-hint">Anlamı görmek için karta dokun</div>`}
+      </div>
+      <div class="lesson-actions" style="justify-content:center">
+        ${VF.revealed?`<button class="btn good-btn" onclick="App.flashNext(true)">✓ Biliyorum</button>
+          <button class="btn sec" onclick="App.flashNext(false)">↻ Tekrar göster</button>`
+         :`<button class="btn" onclick="App.flashReveal()">Anlamı göster</button>`}
+      </div>`;
+  }
+  function flashReveal(){ VF.revealed=true; paintFlash(); }
+  function flashNext(known){ const w=VF.list[VF.idx]; markKnown(w.w, known); VF.idx++; VF.revealed=false; paintFlash(); }
+
+  // Kelime quizi (quiz motorunu kullanır)
+  function vocabQuestion(){
+    const w=rnd(VOCAB);
+    const others=shuffle(VOCAB.filter(x=>x.w!==w.w)).slice(0,3);
+    const opts=shuffle([{t:w.tr,ok:true,why:`Doğru. Örnek: ${w.ex}`},
+      ...others.map(o=>({t:o.tr,ok:false,why:`Bu '${o.w}' kelimesinin anlamı.`}))]);
+    return { type:"mc", _id:"v"+Math.random().toString(36).slice(2), _skill:undefined,
+      stem:`"${w.w}" (${w.pos}) ne demek?`,
+      options:opts.map(o=>o.t), answer:opts.findIndex(o=>o.ok),
+      breakdown:opts.map(o=>o.why),
+      explain:`${w.w} = ${w.tr}. Örnek: ${w.ex}` };
+  }
+  function startVocabQuiz(){
+    const seen=new Set(); const qs=[]; let g=0;
+    while(qs.length<10 && g<200){ const q=vocabQuestion(); g++; if(seen.has(q.stem))continue; seen.add(q.stem); qs.push(q); }
+    Q={ mode:"vocabquiz", questions:qs, idx:0, correct:0, answers:[], startedAt:Date.now() };
+    API.logEvent("start_vocab",{});
+    paintQuestion();
+  }
+  function finishVocab(){
+    const n=Q.questions.length, pct=Math.round(Q.correct/n*100);
+    recordAttempt("vocab", null, Q.correct, n);
+    const msg=pct>=80?"Harika kelime bilgisi! 🏆":pct>=50?"Fena değil, çalışmaya devam 💪":"Kartlarla biraz daha çalış 🃏";
+    view().innerHTML=ringCard(pct,msg,`${Q.correct}/${n} doğru`)+`
+      <div class="lesson-actions" style="justify-content:center;margin-top:18px">
+        <button class="btn" onclick="App.go('vocabquiz')">Yeni quiz</button>
+        <button class="btn sec" onclick="App.go('vocabflash')">🃏 Kartlar</button>
+        <button class="btn sec" onclick="App.go('vocab')">Kelime ana sayfa</button></div>`;
   }
 
   // --- RESET -------------------------------------------------------------
@@ -692,5 +915,6 @@ const App = (() => {
 
   return { go:(r,a)=>go(r,a), answerMC, answerErr, next, prevExam, nextSkill, resetProgress,
            beginDiagnostic:renderDiagnosticInternal, beginExam:startExam, confirmQuit,
-           submitAuth, saveApiBase, doLogout };
+           submitAuth, saveApiBase, doLogout, aiExplain,
+           flashReveal, flashNext };
 })();

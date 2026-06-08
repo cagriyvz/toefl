@@ -53,6 +53,48 @@ a{color:var(--accent)}
 .online-dot.ok{background:var(--good)} .online-dot.no{background:var(--bad)}
 .btn.sm{padding:8px 14px;font-size:13px}
 
+.form-row{display:flex;gap:12px}
+.form-row label{flex:1}
+
+/* PROFİL */
+.profile-head{display:flex;align-items:center;gap:16px}
+.avatar{width:60px;height:60px;border-radius:50%;flex:none;display:grid;place-items:center;
+  font-size:24px;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2))}
+.badge-admin{background:var(--warn);color:#3a2c05;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:800}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:6px 12px;
+  font-size:13px;color:var(--txt);text-decoration:none}
+.chip:hover{border-color:var(--accent)}
+.hist{display:flex;flex-direction:column;gap:6px}
+.hist-row{display:flex;justify-content:space-between;gap:10px;background:var(--panel);border:1px solid var(--line);
+  border-radius:9px;padding:9px 13px;font-size:14px}
+.hist-row small{color:var(--muted)}
+
+/* ADMIN */
+.adm-head,.adm-row{display:grid;grid-template-columns:1fr 70px 64px 64px 56px;gap:8px;align-items:center;padding:11px 14px}
+.adm-head{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.adm-row{background:var(--panel);border:1px solid var(--line);border-radius:11px;margin-bottom:8px;cursor:pointer}
+.adm-row:hover{border-color:var(--accent)}
+.adm-main b{font-size:15px}
+.adm-main small{display:block;color:var(--muted);font-size:12px}
+.adm-stat{text-align:center;font-weight:700;font-size:14px}
+.adm-stat small{display:block;font-size:10px;color:var(--muted);font-weight:500;text-transform:uppercase}
+
+/* FLASHCARD */
+.flash{position:relative;text-align:center;cursor:pointer;min-height:230px;display:flex;flex-direction:column;justify-content:center;gap:6px}
+.flash-top{position:absolute;top:14px;left:16px;right:16px;display:flex;justify-content:space-between}
+.flash-word{font-size:38px;font-weight:800;letter-spacing:.3px}
+.flash-pos{color:var(--muted);font-style:italic}
+.flash-mean{font-size:22px;font-weight:700;color:var(--accent);margin-top:10px}
+.flash-ex{color:var(--muted);font-style:italic;margin-top:6px}
+.flash-hint{color:var(--muted);font-size:13px;margin-top:14px}
+.good-btn{background:linear-gradient(135deg,var(--good),#2bb583)}
+
+/* AI kutusu */
+.ai-box{margin-top:14px;border-top:1px dashed var(--line);padding-top:12px}
+.ai-text{background:linear-gradient(135deg,#221d3a,#1a2138);border:1px solid var(--line);border-radius:12px;
+  padding:14px 16px;font-size:14px;line-height:1.6;margin-top:10px}
+
 /* LEADERBOARD */
 .lb-head,.lb-row{display:grid;grid-template-columns:42px 1fr 78px 70px 70px;gap:8px;align-items:center;padding:11px 14px}
 .lb-head{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
