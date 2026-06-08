@@ -27,6 +27,19 @@ from pydantic import BaseModel
 from typing import Optional
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+# .env desteği (bağımlılıksız): backend/.env varsa oradan değişkenleri yükle.
+# .env GİT'E GİRMEZ (gitignore) — anahtarlar repoya sızmaz.
+def _load_dotenv():
+    p = os.path.join(HERE, ".env")
+    if not os.path.exists(p): return
+    for line in open(p, encoding="utf-8"):
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line: continue
+        k, v = line.split("=", 1)
+        os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+_load_dotenv()
+
 DB_DIR = os.environ.get("TOEFL_DB_DIR", HERE)
 os.makedirs(DB_DIR, exist_ok=True)
 DB   = os.path.join(DB_DIR, "toefl.db")
