@@ -16,23 +16,29 @@ const App = (() => {
   function save() { localStorage.setItem(STORE, JSON.stringify(progress)); }
   let progress = load();
   if (!progress.skills) progress.skills = {};
-  if (!progress.wrong)  progress.wrong  = [];   // yanlış yapılan soru id'leri
+  if (!Array.isArray(progress.wrong)) progress.wrong = [];
+  // Eski sürümde 'wrong' string id dizisiydi → temizle (artık soru anlık görüntüsü saklanır)
+  progress.wrong = progress.wrong.filter(x => x && typeof x === "object");
 
-  // --- Soru indeksi (id -> soru) ----------------------------------------
-  const QINDEX = {};
-  for (const [id, sk] of Object.entries(CURRICULUM.skills)) {
-    sk.questions.forEach((q, i) => {
-      QINDEX["s"+id+"_"+i] = Object.assign({}, q, { _id:"s"+id+"_"+i, _skill:+id });
-    });
+  // --- Soru kaynağı: PROSEDÜREL ÜRETİCİ (her seferinde TAZE) -------------
+  // GEN yoksa (ör. test) elimizdeki kürasyon bankasına düşeriz.
+  const HAS_GEN = (typeof GEN !== "undefined");
+  function genSkill(id, n){
+    if (HAS_GEN && GEN.has(id)) return GEN.forSkill(id, n);
+    return (CURRICULUM.skills[id]?.questions || []).map((q,i)=>Object.assign({},q,{_id:"s"+id+"_"+i,_skill:+id}));
   }
-  DIAGNOSTIC.forEach((q, i) => {
-    QINDEX["d"+i] = Object.assign({}, q, { _id:"d"+i, _skill:q.skill });
-  });
-
-  function skillQuestions(id){
-    return CURRICULUM.skills[id].questions.map((q,i)=>QINDEX["s"+id+"_"+i]);
+  function genExam(){
+    if (HAS_GEN) return GEN.examSet();
+    // yedek: kürasyon bankasından örnekle
+    const mc=[],err=[];
+    for(const id of Object.keys(CURRICULUM.skills))
+      genSkill(id,99).forEach(q=>(q.type==="mc"?mc:err).push(q));
+    return [...shuffle(mc).slice(0,15), ...shuffle(err).slice(0,25)];
   }
-  function diagnosticQuestions(){ return DIAGNOSTIC.map((q,i)=>QINDEX["d"+i]); }
+  function genDiagnostic(n){
+    if (HAS_GEN) return GEN.diagnosticSet(n);
+    return DIAGNOSTIC.map((q,i)=>Object.assign({},q,{_id:"d"+i,_skill:q.skill})).slice(0,n);
+  }
 
   function setSkillScore(id, pct) {
     const s = progress.skills[id] || {};
@@ -40,8 +46,15 @@ const App = (() => {
     if (pct >= 70) s.done = true;
     progress.skills[id] = s; save();
   }
-  function addWrong(id){ if(id && !progress.wrong.includes(id)){ progress.wrong.push(id); save(); } }
-  function removeWrong(id){ const i=progress.wrong.indexOf(id); if(i>=0){ progress.wrong.splice(i,1); save(); } }
+  // Yanlış havuzu: üretilen sorular geçici olduğundan TAM anlık görüntü saklanır.
+  function addWrong(q){
+    const snap = JSON.parse(JSON.stringify(q));
+    snap._wid = (progress.wseq = (progress.wseq||0)+1);
+    progress.wrong.push(snap);
+    if (progress.wrong.length > 300) progress.wrong.shift();
+    save();
+  }
+  function removeWrong(wid){ const i=progress.wrong.findIndex(x=>x._wid===wid); if(i>=0){ progress.wrong.splice(i,1); save(); } }
 
   // --- Yardımcılar -------------------------------------------------------
   function esc(s){ return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
@@ -71,6 +84,9 @@ const App = (() => {
     if (route==="exam") return renderExamIntro();
     if (route==="review") return startReview();
     if (route==="progress") return renderProgress();
+    if (route==="auth") return renderAuth(arg);
+    if (route==="leaderboard") return renderLeaderboard();
+    if (route==="account") return renderAccount();
   }
 
   // --- HOME --------------------------------------------------------------
@@ -167,30 +183,29 @@ const App = (() => {
   // ======================================================================
   let Q = null;
 
+  const PRACTICE_N = 10;   // her skill quizinde taze soru sayısı
   function startQuiz(skillId){
-    Q = { mode:"practice", skillId, questions:skillQuestions(skillId),
-          idx:0, correct:0, answers:[] };
+    Q = { mode:"practice", skillId, questions:genSkill(skillId, PRACTICE_N),
+          idx:0, correct:0, answers:[], startedAt:Date.now() };
+    API.logEvent("start_practice", {skill:skillId});
     paintQuestion();
   }
   function renderDiagnosticInternal(){
-    Q = { mode:"diagnostic", questions:diagnosticQuestions(),
-          idx:0, correct:0, answers:[], wrongSkills:{} };
+    Q = { mode:"diagnostic", questions:genDiagnostic(20),
+          idx:0, correct:0, answers:[], wrongSkills:{}, startedAt:Date.now() };
     paintQuestion();
   }
   function startReview(){
-    const qs = progress.wrong.map(id=>QINDEX[id]).filter(Boolean);
+    const qs = progress.wrong.slice();   // anlık görüntüler (taze değil, hatalı sorular)
     if (!qs.length){ return renderEmptyReview(); }
-    Q = { mode:"review", questions:shuffle(qs.slice()), idx:0, correct:0, answers:[] };
+    Q = { mode:"review", questions:shuffle(qs), idx:0, correct:0, answers:[], startedAt:Date.now() };
     paintQuestion();
   }
   function startExam(){
-    const mc=[], err=[];
-    for (const id of Object.keys(CURRICULUM.skills))
-      skillQuestions(id).forEach(q=> (q.type==="mc"?mc:err).push(q));
-    shuffle(mc); shuffle(err);
-    const questions = [...mc.slice(0,15), ...err.slice(0,25)]; // 15 Structure + 25 Written
+    const questions = genExam();   // 40 TAZE soru (15 Structure + 25 Written), her seferinde farklı
     Q = { mode:"exam", questions, idx:0, correct:0, answers:new Array(questions.length).fill(null),
-          examEnd: Date.now() + 25*60*1000 };
+          examEnd: Date.now() + 25*60*1000, startedAt:Date.now() };
+    API.logEvent("start_exam", {});
     paintQuestion();
     examTimer = setInterval(tickTimer, 1000);
   }
@@ -310,15 +325,45 @@ const App = (() => {
       });
     }
 
-    if (ok){ Q.correct++; if (Q.mode==="review") removeWrong(q._id); }
-    else { addWrong(q._id); if (Q.mode==="diagnostic" && q._skill) Q.wrongSkills[q._skill]=true; }
+    if (ok){ Q.correct++; if (Q.mode==="review") removeWrong(q._wid); }
+    else { addWrong(q); if (Q.mode==="diagnostic" && q._skill) Q.wrongSkills[q._skill]=true; }
 
     const detail = q.explain || q.correction || "";
     const fb = document.getElementById("fb");
     fb.className = "feedback show " + (ok?"ok":"no");
     fb.innerHTML = `<span class="res ${ok?'ok':'no'}">${ok?'✓ Doğru':'✗ Yanlış'}</span>
-      <b>${ok?'Açıklama':'Doğru cevap & açıklama'}</b>${esc(detail)}`;
+      <b>${ok?'Özet':'Doğru cevap & özet'}</b>${esc(detail)}${breakdownHTML(q, ans)}`;
     document.getElementById("nextBtn").style.display = "inline-block";
+  }
+
+  // Her şık için detaylı açıklama bloğu
+  function breakdownHTML(q, userAns){
+    if (!q.breakdown) return "";
+    let rows="";
+    if (q.type==="mc"){
+      q.options.forEach((o,i)=>{
+        const isAns=i===q.answer, isUser=userAns===i;
+        rows += bdRow(LETTERS[i], o, q.breakdown[i], isAns, isUser, false);
+      });
+    } else {
+      q.segments.filter(s=>s.choice!==undefined).forEach(s=>{
+        const isErr=s.choice===q.answer, isUser=userAns===s.choice;
+        rows += bdRow(s.choice, s.text, q.breakdown[s.choice], isErr, isUser, true);
+      });
+    }
+    return `<div class="breakdown"><div class="bd-title">Şık şık açıklama</div>${rows}</div>`;
+  }
+  // err'de hatalı şık kırmızı (mark=true & flagged), diğerleri yeşil.
+  // mc'de doğru şık yeşil, diğerleri kırmızı.
+  function bdRow(letter, text, why, flagged, isUser, isErrType){
+    const good = isErrType ? !flagged : flagged;   // bu şık "doğru/uygun" mu?
+    const cls = good ? "good" : "bad";
+    const mark = good ? "✓" : "✗";
+    const tag = isUser ? `<span class="bd-tag">senin cevabın</span>` : "";
+    return `<div class="bd-row ${cls}">
+      <span class="bd-lett">${mark} ${letter}</span>
+      <div class="bd-body"><b>${esc(text)}</b>${tag}<div class="bd-why">${esc(why||"")}</div></div>
+    </div>`;
   }
 
   function prevExam(){ if(Q.idx>0){ Q.idx--; paintQuestion(); } }
@@ -338,10 +383,25 @@ const App = (() => {
       <div class="score-ring"><div class="inner">${pct}%</div></div>
       <h2>${h2}</h2><p>${sub}</p></div>`;
   }
+  // Denemeyi backend'e kaydet (giriş yapılmışsa); döndürdüğü ilerlemeyle yereli güncelle.
+  function recordAttempt(mode, skill, correct, total){
+    const dur = Q.startedAt ? Math.round((Date.now()-Q.startedAt)/1000) : 0;
+    if (API.authed()){
+      API.saveAttempt({mode, skill: skill||null, correct, total, duration:dur})
+         .then(r=>{ if(r&&r.progress) mergeServerProgress(r.progress); })
+         .catch(()=>{});
+    }
+  }
+  function mergeServerProgress(sp){
+    if (sp.skills){ for(const k in sp.skills){ progress.skills[k]=Object.assign(progress.skills[k]||{}, sp.skills[k]); } }
+    if (sp.examBest!=null) progress.examBest = Math.max(progress.examBest||0, sp.examBest);
+    save();
+  }
 
   function finishPractice(){
     const n=Q.questions.length, pct=Math.round(Q.correct/n*100);
     setSkillScore(Q.skillId, pct);
+    recordAttempt("practice", Q.skillId, Q.correct, n);
     const sk=CURRICULUM.skills[Q.skillId];
     const day=CURRICULUM.plan.find(d=>d.skills.includes(+Q.skillId)).day;
     const msg=pct>=90?"Mükemmel! 🏆":pct>=70?"Güzel iş, bu skill tamam ✅":"Bu konuyu tekrar gözden geçir 🔁";
@@ -360,6 +420,7 @@ const App = (() => {
 
   function finishReview(){
     const n=Q.questions.length, pct=Math.round(Q.correct/n*100);
+    recordAttempt("review", null, Q.correct, n);
     const left=progress.wrong.length;
     view().innerHTML = ringCard(pct,"Tekrar turu bitti 🔁",`${Q.correct}/${n} doğru · havuzda ${left} soru kaldı`) + `
       <div class="lesson-actions" style="justify-content:center;margin-top:18px">
@@ -394,6 +455,7 @@ const App = (() => {
     const n=Q.questions.length;
     const weak=Object.keys(Q.wrongSkills).map(Number).sort((a,b)=>a-b);
     progress.diagnostic={ score:Q.correct, total:n, weak }; save();
+    recordAttempt("diagnostic", null, Q.correct, n);
     const pct=Math.round(Q.correct/n*100);
     let weakHtml;
     if(!weak.length){
@@ -440,11 +502,13 @@ const App = (() => {
     Q.questions.forEach((q,i)=>{
       const a=Q.answers[i];
       const ok=a!=null && isCorrect(q,a);
-      if(ok) correct++; else addWrong(q._id);
+      if(ok) correct++; else addWrong(q);
     });
     const n=Q.questions.length, pct=Math.round(correct/n*100);
     progress.examBest = Math.max(progress.examBest||0, pct);
     progress.examLast = { correct, total:n, date:Date.now() }; save();
+    Q.correct = correct;
+    recordAttempt("exam", null, correct, n);
 
     const review = Q.questions.map((q,i)=>{
       const a=Q.answers[i];
@@ -460,6 +524,7 @@ const App = (() => {
         <div class="rev-line">Senin cevabın: <span class="${ok?'g':'r'}">${esc(yours)}</span></div>
         ${ok?"":`<div class="rev-line">Doğru: <span class="g">${esc(right)}</span></div>`}
         <div class="rev-exp">${esc(q.explain||q.correction||"")}</div>
+        ${breakdownHTML(q, a)}
       </div>`;
     }).join("");
 
@@ -497,17 +562,135 @@ const App = (() => {
       <div class="prog-grid">${cells}</div>`;
   }
 
+  // --- AUTH (giriş / kayıt) ----------------------------------------------
+  function renderAuth(mode){
+    mode = mode || "login";
+    const reg = mode==="register";
+    const apiInfo = API.enabled()
+      ? (API.isOnline() ? `<span class="online-dot ok"></span> Sunucu bağlı`
+                        : `<span class="online-dot no"></span> Sunucuya ulaşılamıyor`)
+      : `<span class="online-dot no"></span> Sunucu ayarlı değil (misafir mod)`;
+    view().innerHTML = `
+      <button class="back" onclick="App.go('home')">← Ana sayfa</button>
+      <div class="card auth-card">
+        <h2>${reg?"📝 Kayıt Ol":"🔑 Giriş Yap"}</h2>
+        <p class="cat">${apiInfo}</p>
+        <div class="form">
+          ${reg?`<label>Ad<input id="au-name" placeholder="Adın" autocomplete="name"></label>`:""}
+          <label>E-posta<input id="au-email" type="email" placeholder="ornek@mail.com" autocomplete="email"></label>
+          <label>Şifre<input id="au-pass" type="password" placeholder="••••••" autocomplete="${reg?'new-password':'current-password'}"></label>
+          <div class="form-err" id="au-err"></div>
+          <button class="btn" id="au-submit" onclick="App.submitAuth('${mode}')">${reg?"Kayıt ol":"Giriş yap"}</button>
+          <div class="form-switch">
+            ${reg?`Zaten hesabın var mı? <a href="#" onclick="App.go('auth','login');return false">Giriş yap</a>`
+                 :`Hesabın yok mu? <a href="#" onclick="App.go('auth','register');return false">Kayıt ol</a>`}
+          </div>
+          <details class="api-settings"><summary>Sunucu adresi (gelişmiş)</summary>
+            <p class="cat" style="margin:8px 0">Backend başka yerde çalışıyorsa adresini gir (ör. http://localhost:8000).
+            Boş bırakırsan misafir modda yereldeki ilerlemenle çalışırsın.</p>
+            <input id="au-base" placeholder="http://localhost:8000" value="${esc(API.base()||"")}">
+            <button class="btn sec sm" onclick="App.saveApiBase()">Kaydet & bağlan</button>
+          </details>
+        </div>
+      </div>`;
+  }
+  function saveApiBase(){
+    const v=document.getElementById("au-base").value.trim();
+    API.setBase(v);
+    API.health().then(()=>go("auth", "login"));
+  }
+  async function submitAuth(mode){
+    const err=document.getElementById("au-err");
+    const email=document.getElementById("au-email").value.trim();
+    const pass=document.getElementById("au-pass").value;
+    const name=mode==="register"?(document.getElementById("au-name").value.trim()):"";
+    err.textContent="";
+    if(!API.enabled()){ err.textContent="Sunucu ayarlı değil. Aşağıdan adres gir ya da misafir modda devam et."; return; }
+    const btn=document.getElementById("au-submit"); btn.disabled=true; btn.textContent="...";
+    try{
+      if(mode==="register") await API.register(email,pass,name||email.split("@")[0]);
+      else await API.login(email,pass);
+      await syncFromServer();
+      go("home");
+    }catch(e){ err.textContent=e.message||"Hata"; btn.disabled=false; btn.textContent=mode==="register"?"Kayıt ol":"Giriş yap"; }
+  }
+  async function syncFromServer(){
+    if(!API.authed()) return;
+    try{ const r=await API.me(); if(r&&r.progress) mergeServerProgress(r.progress); }catch(_){}
+  }
+  function renderAccount(){
+    const u=API.user();
+    view().innerHTML = `
+      <button class="back" onclick="App.go('home')">← Ana sayfa</button>
+      <div class="card auth-card">
+        <h2>👤 Hesabım</h2>
+        <p>Giriş yapıldı: <b>${esc(u?u.name:"")}</b> <span class="cat">(${esc(u?u.email:"")})</span></p>
+        <p class="cat">İlerlemen ve denemelerin sunucuya kaydediliyor; her cihazdan erişebilirsin.</p>
+        <div class="lesson-actions">
+          <button class="btn sec" onclick="App.go('leaderboard')">🏆 Lider Tablosu</button>
+          <button class="btn sec" onclick="App.go('progress')">📊 İlerlemem</button>
+          <button class="btn" onclick="App.doLogout()">Çıkış yap</button>
+        </div>
+      </div>`;
+  }
+  async function doLogout(){ await API.logout(); go("home"); }
+
+  // --- LEADERBOARD -------------------------------------------------------
+  async function renderLeaderboard(){
+    view().innerHTML = `<button class="back" onclick="App.go('home')">← Ana sayfa</button>
+      <div class="hero"><h1>🏆 Lider Tablosu</h1><p>Diğer öğrencilerle kıyasla — en iyi deneme skoru ve tamamlanan beceriler.</p></div>
+      <div id="lb-body"><p class="empty">Yükleniyor…</p></div>`;
+    const set=h=>{ const el=document.getElementById("lb-body"); if(el) el.innerHTML=h; };
+    if(!API.enabled()){ set(`<p class="empty">Lider tablosu için bir sunucuya bağlı olman gerekir. <a href="#" onclick="App.go('auth');return false">Giriş yap / sunucu ayarla</a></p>`); return; }
+    try{
+      const r=await API.leaderboard();
+      const me=API.user();
+      const rows=r.leaderboard.map((u,i)=>`
+        <div class="lb-row ${me&&u.name===me.name?'self':''}">
+          <span class="lb-rank">${i+1}</span>
+          <span class="lb-name">${esc(u.name)}</span>
+          <span class="lb-stat">${u.examBest!=null?u.examBest+"%":"—"}<small>deneme</small></span>
+          <span class="lb-stat">${u.skillsDone}<small>beceri</small></span>
+          <span class="lb-stat">${u.attempts}<small>çözüm</small></span>
+        </div>`).join("") || `<p class="empty">Henüz kimse yok. İlk sen ol!</p>`;
+      set(`<div class="lb-head"><span>#</span><span>İsim</span><span>En iyi</span><span>Beceri</span><span>Çözüm</span></div>${rows}`);
+    }catch(e){ set(`<p class="empty">Yüklenemedi: ${esc(e.message)}</p>`); }
+  }
+
+  // --- Üst menü hesap düğmesi (her render'da güncellenir) -----------------
+  function refreshAccountNav(){
+    const el=document.getElementById("nav-account"); if(!el) return;
+    if(API.authed()){ const u=API.user(); el.innerHTML=`<button onclick="App.go('account')">👤 ${esc((u&&u.name)||"Hesap")}</button>`; }
+    else { el.innerHTML=`<button onclick="App.go('auth')">Giriş / Kayıt</button>`; }
+  }
+
   // --- RESET -------------------------------------------------------------
   function resetProgress(){
-    if (confirm("Tüm ilerlemen silinecek. Emin misin?")){
+    if (confirm("Tüm yerel ilerlemen silinecek. Emin misin?")){
       localStorage.removeItem(STORE);
       progress = { skills:{}, wrong:[] };
       go("home");
     }
   }
 
-  document.addEventListener("DOMContentLoaded", ()=>go("home"));
+  // --- BOOT --------------------------------------------------------------
+  async function boot(){
+    refreshAccountNav();
+    go("home");
+    if (API.enabled()){
+      await API.health();
+      if (API.authed()) await syncFromServer();
+      refreshAccountNav();
+      if (document.querySelector(".hero h1")) go("home"); // ana sayfadaysa ilerlemeyi tazele
+    }
+  }
+  document.addEventListener("DOMContentLoaded", boot);
+  // her görünüm değişiminde hesap düğmesini tazele
+  const _go = go;
+  go = function(r,a){ _go(r,a); refreshAccountNav();
+    const nav=document.querySelector(".topnav"); if(nav) nav.classList.remove("open"); };
 
-  return { go, answerMC, answerErr, next, prevExam, nextSkill, resetProgress,
-           beginDiagnostic:renderDiagnosticInternal, beginExam:startExam, confirmQuit };
+  return { go:(r,a)=>go(r,a), answerMC, answerErr, next, prevExam, nextSkill, resetProgress,
+           beginDiagnostic:renderDiagnosticInternal, beginExam:startExam, confirmQuit,
+           submitAuth, saveApiBase, doLogout };
 })();

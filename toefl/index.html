@@ -2,7 +2,8 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <meta name="theme-color" content="#0f1320" />
   <title>TOEFL Structure — 7 Günlük Çalışma</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -17,10 +18,14 @@
         <div class="brand-sub">7 günlük çalışma planı</div>
       </div>
     </div>
+    <button class="nav-toggle" id="navToggle" aria-label="Menü" onclick="document.querySelector('.topnav').classList.toggle('open')">☰</button>
     <nav class="topnav">
       <button onclick="App.go('home')">Plan</button>
       <button onclick="App.go('diagnostic')">Tanı Testi</button>
+      <button onclick="App.go('exam')">Tam Deneme</button>
+      <button onclick="App.go('leaderboard')">Lider Tablosu</button>
       <button onclick="App.go('progress')">İlerleme</button>
+      <span id="nav-account"></span>
       <button class="ghost" onclick="App.resetProgress()">Sıfırla</button>
     </nav>
   </header>
@@ -28,10 +33,12 @@
   <main id="view"></main>
 
   <footer class="foot">
-    Longman/Phillips TOEFL Structure yapısına göre hazırlanmıştır · İlerlemen bu tarayıcıda saklanır.
+    Longman/Phillips TOEFL Structure yapısına göre hazırlanmıştır · Çoklu kullanıcı + backend destekli
   </footer>
 
   <script src="js/curriculum.js"></script>
+  <script src="js/generators.js"></script>
+  <script src="js/api.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
