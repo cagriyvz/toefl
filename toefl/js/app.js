@@ -93,6 +93,7 @@ const App = (() => {
     if (route==="vocabquiz") return startVocabQuiz();
     if (route==="admin") return renderAdmin();
     if (route==="adminuser") return renderAdminUser(arg);
+    if (route==="adminsettings") return renderAdminSettings();
   }
 
   // --- HOME --------------------------------------------------------------
@@ -176,7 +177,7 @@ const App = (() => {
         <div class="rule">${sk.rule}</div>
         <div class="chart">📌 <b>Kilit kural:</b> ${esc(sk.chart)}</div>
         <div class="lesson-actions">
-          <button class="btn" onclick="App.go('quiz',${id})">Quiz'e başla (${sk.questions.length} soru) →</button>
+          <button class="btn" onclick="App.go('quiz',${id})">Quiz'e başla (20 soru) →</button>
           <button class="btn sec" onclick="App.go('day',${day})">Sonra</button>
         </div>
       </div>`;
@@ -189,7 +190,7 @@ const App = (() => {
   // ======================================================================
   let Q = null;
 
-  const PRACTICE_N = 10;   // her skill quizinde taze soru sayısı
+  const PRACTICE_N = 20;   // her skill quizinde taze soru sayısı
   function startQuiz(skillId){
     Q = { mode:"practice", skillId, questions:genSkill(skillId, PRACTICE_N),
           idx:0, correct:0, answers:[], startedAt:Date.now() };
@@ -745,7 +746,9 @@ const App = (() => {
     if(!(API.authed()&&API.user()&&API.user().isAdmin)){ return go("home"); }
     view().innerHTML=`<button class="back" onclick="App.go('home')">← Ana sayfa</button>
       <div class="hero"><h1>🛠️ Admin Paneli</h1><p>Tüm üyeler, bilgileri ve gelişimleri.</p>
-        <div class="hero-row" id="adm-stats"></div></div>
+        <div class="hero-row" id="adm-stats"></div>
+        <div class="lesson-actions"><button class="btn sec" onclick="App.go('adminsettings')">⚙️ AI / API Ayarları</button></div>
+      </div>
       <div class="section-title">Üyeler</div>
       <div id="adm-users"><p class="empty">Yükleniyor…</p></div>`;
     try{
@@ -799,8 +802,47 @@ const App = (() => {
         <div class="section-title">💪 Güçlü</div><p>${esc(strong)}</p>
         <div class="section-title">📌 Eksik</div><p>${esc(weak)}</p>
         <div class="section-title">📝 Son çözümler</div><div class="hist">${attempts}</div>
-        <div class="section-title">🧾 Son loglar</div><div class="hist">${events}</div>`;
+        <div class="section-title">🧾 Son loglar</div><div class="hist">${events}</div>
+        <div class="lesson-actions" style="margin-top:18px">
+          <button class="btn sec danger" onclick="App.adminDelete(${u.id})">🗑️ Kullanıcıyı sil</button>
+        </div>`;
     }catch(e){ const el=document.getElementById("adu"); if(el) el.innerHTML=`<p class="empty">Yüklenemedi: ${esc(e.message)}</p>`; }
+  }
+  async function adminDelete(id){
+    if(!confirm("Bu kullanıcı ve tüm verileri silinsin mi?")) return;
+    try{ await API.adminDeleteUser(id); go("admin"); }catch(e){ alert(e.message); }
+  }
+
+  // Admin AI / API ayarları — API anahtarı BURADAN girilir
+  async function renderAdminSettings(){
+    if(!(API.authed()&&API.user()&&API.user().isAdmin)){ return go("home"); }
+    view().innerHTML=`<button class="back" onclick="App.go('admin')">← Admin paneli</button>
+      <div class="card auth-card">
+        <h2>⚙️ AI / API Ayarları</h2>
+        <p class="cat" id="set-status">Yükleniyor…</p>
+        <div class="form">
+          <label>Groq API Anahtarı
+            <input id="set-key" type="password" placeholder="gsk_... (console.groq.com)" autocomplete="off"></label>
+          <label>Model
+            <input id="set-model" placeholder="llama-3.3-70b-versatile"></label>
+          <div class="form-err" id="set-err"></div>
+          <button class="btn" onclick="App.saveAiSettings()">Kaydet</button>
+          <p class="cat">Anahtar sunucuda güvenle saklanır, kullanıcılara gösterilmez. Kaydedince
+          quizlerdeki "🤖 AI ile açıkla" butonu çalışır. Anahtar al: console.groq.com → API Keys.</p>
+        </div>
+      </div>`;
+    try{
+      const s=await API.adminGetSettings();
+      const st=document.getElementById("set-status"); if(st) st.innerHTML = s.aiKeySet?'<span class="online-dot ok"></span> API anahtarı tanımlı':'<span class="online-dot no"></span> API anahtarı yok';
+      const m=document.getElementById("set-model"); if(m) m.value=s.aiModel||"";
+    }catch(e){ const st=document.getElementById("set-status"); if(st) st.textContent=e.message; }
+  }
+  async function saveAiSettings(){
+    const key=document.getElementById("set-key").value.trim();
+    const model=document.getElementById("set-model").value.trim();
+    const err=document.getElementById("set-err"); err.textContent="";
+    try{ await API.adminSaveSettings(key||null, model||null); err.style.color="var(--good)"; err.textContent="✓ Kaydedildi"; await API.health(); }
+    catch(e){ err.style.color="var(--bad)"; err.textContent=e.message; }
   }
 
   // --- KELİME ÇALIŞMASI --------------------------------------------------
@@ -897,24 +939,29 @@ const App = (() => {
   }
 
   // --- BOOT --------------------------------------------------------------
+  // Giriş kapısı: backend varsa ve giriş yapılmadıysa uygulamaya girilemez.
+  function gateLocked(){ return API.enabled() && !API.authed(); }
   async function boot(){
-    refreshAccountNav();
-    go("home");
     if (API.enabled()){
       await API.health();
       if (API.authed()) await syncFromServer();
-      refreshAccountNav();
-      if (document.querySelector(".hero h1")) go("home"); // ana sayfadaysa ilerlemeyi tazele
     }
+    go("home"); // kilitliyse sarmalayıcı otomatik auth'a yönlendirir
   }
   document.addEventListener("DOMContentLoaded", boot);
-  // her görünüm değişiminde hesap düğmesini tazele
+
+  // Sarmalayıcı: kapı kilitliyse her yolu giriş ekranına çevir + menü/hesap tazele
   const _go = go;
-  go = function(r,a){ _go(r,a); refreshAccountNav();
-    const nav=document.querySelector(".topnav"); if(nav) nav.classList.remove("open"); };
+  go = function(r,a){
+    if (gateLocked() && r!=="auth"){ r="auth"; a=a||"login"; }
+    _go(r,a);
+    refreshAccountNav();
+    document.body.classList.toggle("locked", gateLocked());
+    const nav=document.querySelector(".topnav"); if(nav) nav.classList.remove("open");
+  };
 
   return { go:(r,a)=>go(r,a), answerMC, answerErr, next, prevExam, nextSkill, resetProgress,
            beginDiagnostic:renderDiagnosticInternal, beginExam:startExam, confirmQuit,
            submitAuth, saveApiBase, doLogout, aiExplain,
-           flashReveal, flashNext };
+           flashReveal, flashNext, adminDelete, saveAiSettings };
 })();

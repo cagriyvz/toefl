@@ -67,10 +67,14 @@ const API = (() => {
   async function adminUsers(){ return call("/api/admin/users"); }
   async function adminUserDetail(id){ return call("/api/admin/user/"+id); }
   async function adminStats(){ return call("/api/admin/stats"); }
+  async function adminDeleteUser(id){ return call("/api/admin/user/"+id,{method:"DELETE"}); }
+  async function adminGetSettings(){ return call("/api/admin/settings"); }
+  async function adminSaveSettings(aiKey,aiModel){ return call("/api/admin/settings",{method:"POST",body:JSON.stringify({aiKey,aiModel})}); }
 
   return { setBase, clearBase, base:()=>base, enabled, isOnline, authed, user:()=>user,
            health, register, login, logout, me, saveAttempt, logEvent, leaderboard,
-           explain, adminUsers, adminUserDetail, adminStats };
+           explain, adminUsers, adminUserDetail, adminStats, adminDeleteUser,
+           adminGetSettings, adminSaveSettings };
 })();
 
 if (typeof module!=="undefined") module.exports = { API };

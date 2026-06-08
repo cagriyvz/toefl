@@ -17,21 +17,28 @@ a{color:var(--accent)}
 
 /* TOPBAR */
 .topbar{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:14px 22px;border-bottom:1px solid var(--line);
-  background:rgba(15,19,32,.85);backdrop-filter:blur(8px);position:sticky;top:0;z-index:10;
+  display:flex;align-items:center;gap:18px;
+  padding:12px 22px;border-bottom:1px solid var(--line);
+  background:rgba(15,19,32,.9);backdrop-filter:blur(10px);position:sticky;top:0;z-index:20;
 }
-.brand{display:flex;align-items:center;gap:12px;cursor:pointer}
-.logo{font-size:26px}
-.brand-title{font-weight:800;font-size:17px;letter-spacing:.2px}
-.brand-sub{font-size:12px;color:var(--muted)}
-.topnav{display:flex;gap:8px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px;cursor:pointer;flex:none}
+.logo{font-size:24px}
+.brand-title{font-weight:800;font-size:16px;letter-spacing:.2px;line-height:1.1}
+.brand-sub{font-size:11px;color:var(--muted)}
+.topnav{display:flex;gap:4px;align-items:center;margin-left:auto;flex-wrap:wrap}
 .topnav button{
-  background:var(--panel2);color:var(--txt);border:1px solid var(--line);
-  padding:8px 14px;border-radius:10px;font-weight:600;font-size:14px;transition:.15s;
+  background:transparent;color:var(--muted);border:1px solid transparent;
+  padding:8px 13px;border-radius:9px;font-weight:600;font-size:14px;transition:.15s;white-space:nowrap;
 }
-.topnav button:hover{border-color:var(--accent);color:#fff}
-.topnav .ghost{background:transparent;color:var(--muted)}
+.topnav button:hover{background:var(--panel2);color:#fff}
+.topnav .ghost{color:var(--muted);opacity:.7;font-size:13px}
+.topnav .ghost:hover{color:var(--bad);background:transparent}
+#nav-account button,#nav-admin button{background:var(--panel2);border:1px solid var(--line);color:var(--txt)}
+#nav-account button:hover{border-color:var(--accent);background:var(--panel2)}
+#nav-admin button{color:var(--warn);border-color:#5c4a23}
+/* Giriş kapısı kilitliyken menüyü gizle */
+body.locked .topnav,body.locked .nav-toggle{display:none}
+body.locked .brand{cursor:default}
 #nav-account button{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff}
 .nav-toggle{display:none;background:var(--panel2);color:var(--txt);border:1px solid var(--line);
   border-radius:10px;font-size:20px;line-height:1;padding:6px 12px}
@@ -54,7 +61,10 @@ a{color:var(--accent)}
 .btn.sm{padding:8px 14px;font-size:13px}
 
 .form-row{display:flex;gap:12px}
-.form-row label{flex:1}
+.form-row label{flex:1;min-width:0}
+.form input{width:100%}
+.btn.danger{color:var(--bad);border-color:#5a2f33;background:var(--panel2)}
+.btn.danger:hover{background:rgba(248,113,113,.12)}
 
 /* PROFİL */
 .profile-head{display:flex;align-items:center;gap:16px}
@@ -107,7 +117,10 @@ a{color:var(--accent)}
 
 main{flex:1;max-width:980px;margin:0 auto;width:100%;padding:26px 20px 60px}
 
-.foot{text-align:center;color:var(--muted);font-size:12px;padding:22px;border-top:1px solid var(--line)}
+.foot{text-align:center;padding:22px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:3px}
+.foot-credit{font-size:14px;color:var(--txt)}
+.foot-credit b{color:var(--accent)}
+.foot-sub{font-size:11px;color:var(--muted)}
 
 /* HOME / HERO */
 .hero{
@@ -314,6 +327,13 @@ main{flex:1;max-width:980px;margin:0 auto;width:100%;padding:26px 20px 60px}
   .lb-head span:nth-child(5),.lb-row .lb-stat:nth-child(5){display:none}
   .bd-row{flex-direction:column;gap:4px}
   .bd-lett{width:auto}
+  /* admin tablosu: kompakt */
+  .adm-head,.adm-row{grid-template-columns:1fr 58px 54px;gap:6px;padding:10px}
+  .adm-head span:nth-child(4),.adm-head span:nth-child(5){display:none}
+  .adm-row .adm-stat:nth-child(4),.adm-row .adm-stat:nth-child(5){display:none}
+  .profile-head{flex-wrap:wrap}
+  .flash-word{font-size:30px}
+  .form-row{flex-direction:column;gap:14px}
 }
 @media (max-width:380px){
   .prog-grid{grid-template-columns:1fr}

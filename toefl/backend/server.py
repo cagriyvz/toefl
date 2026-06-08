@@ -78,6 +78,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS events(
           id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER,
           type TEXT NOT NULL, data TEXT, created REAL NOT NULL);
+        CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT);
         """)
         # eski DB'ler için güvenli kolon ekleme
         cols = {r["name"] for r in con.execute("PRAGMA table_info(users)")}
@@ -90,6 +91,32 @@ init_db()
 
 # ---------------------------------------------------------------- helpers
 def hash_pw(pw, salt): return hashlib.pbkdf2_hmac("sha256", pw.encode(), salt.encode(), 120_000).hex()
+
+def get_setting(k, default=None):
+    with closing(db()) as con:
+        r = con.execute("SELECT value FROM settings WHERE key=?", (k,)).fetchone()
+    return r["value"] if r else default
+
+def set_setting(k, v):
+    with closing(db()) as con, con:
+        con.execute("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (k, v))
+
+def seed_admin():
+    """ADMIN_EMAIL + ADMIN_PASSWORD env'i verilmişse o admin hesabını oluştur/yetkilendir."""
+    em = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+    pw = os.environ.get("ADMIN_PASSWORD", "")
+    if not em or not pw:
+        return
+    with closing(db()) as con, con:
+        row = con.execute("SELECT * FROM users WHERE email=?", (em,)).fetchone()
+        if row:
+            con.execute("UPDATE users SET is_admin=1 WHERE id=?", (row["id"],))
+        else:
+            salt = secrets.token_hex(8)
+            con.execute("""INSERT INTO users(email,name,first_name,last_name,pwhash,salt,is_admin,created,last_seen)
+                           VALUES(?,?,?,?,?,?,1,?,?)""",
+                        (em, "Admin", "Admin", "", hash_pw(pw, salt), salt, time.time(), time.time()))
+seed_admin()
 def make_token(): return secrets.token_urlsafe(32)
 
 def current_user(authorization: Optional[str] = Header(None)):
@@ -128,6 +155,9 @@ class EventIn(BaseModel):
     type: str; data: Optional[dict]=None
 class ExplainIn(BaseModel):
     prompt: str
+class SettingsIn(BaseModel):
+    aiKey: Optional[str] = None
+    aiModel: Optional[str] = None
 
 # ---------------------------------------------------------------- progress
 def build_progress(uid):
@@ -158,7 +188,8 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"],
 
 @app.get("/api/health")
 def health():
-    return {"ok":True,"service":"toefl-structure","ai": bool(os.environ.get("AI_API_KEY")),"time":time.time()}
+    ai = bool(get_setting("ai_key") or os.environ.get("AI_API_KEY"))
+    return {"ok":True,"service":"toefl-structure","ai": ai,"time":time.time()}
 
 @app.post("/api/register")
 def register(b: RegisterIn):
@@ -273,6 +304,32 @@ def admin_user_detail(uid: int, admin=Depends(require_admin)):
             "attempts":[dict(a) for a in attempts],
             "events":[{"type":e["type"],"data":e["data"],"created":e["created"]} for e in events]}
 
+@app.delete("/api/admin/user/{uid}")
+def admin_delete_user(uid: int, admin=Depends(require_admin)):
+    if uid == admin["id"]:
+        raise HTTPException(400, "Kendi hesabını silemezsin")
+    with closing(db()) as con, con:
+        con.execute("DELETE FROM attempts WHERE user_id=?", (uid,))
+        con.execute("DELETE FROM events WHERE user_id=?", (uid,))
+        con.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
+        con.execute("DELETE FROM users WHERE id=?", (uid,))
+    return {"ok": True}
+
+@app.get("/api/admin/settings")
+def admin_get_settings(admin=Depends(require_admin)):
+    key = get_setting("ai_key") or os.environ.get("AI_API_KEY", "")
+    model = get_setting("ai_model") or os.environ.get("AI_MODEL", "llama-3.3-70b-versatile")
+    return {"aiKeySet": bool(key), "aiModel": model}
+
+@app.post("/api/admin/settings")
+def admin_set_settings(b: SettingsIn, admin=Depends(require_admin)):
+    if b.aiKey is not None and b.aiKey.strip():
+        set_setting("ai_key", b.aiKey.strip())
+    if b.aiModel is not None and b.aiModel.strip():
+        set_setting("ai_model", b.aiModel.strip())
+    log_event(admin["id"], "admin_settings")
+    return {"ok": True}
+
 @app.get("/api/admin/stats")
 def admin_stats(admin=Depends(require_admin)):
     with closing(db()) as con:
@@ -285,11 +342,11 @@ def admin_stats(admin=Depends(require_admin)):
 # ---------------------------------------------------------------- AI (ücretsiz, OpenAI-uyumlu)
 @app.post("/api/explain")
 def explain(b: ExplainIn, user=Depends(current_user)):
-    key=os.environ.get("AI_API_KEY")
+    key = get_setting("ai_key") or os.environ.get("AI_API_KEY")
     if not key:
-        return {"ok":False,"text":None,"reason":"AI yapılandırılmamış (sunucuda AI_API_KEY tanımlı değil)."}
+        return {"ok":False,"text":None,"reason":"AI yapılandırılmamış (admin panelinden API anahtarı girilmeli)."}
     base=os.environ.get("AI_BASE_URL","https://api.groq.com/openai/v1").rstrip("/")
-    model=os.environ.get("AI_MODEL","llama-3.3-70b-versatile")
+    model=get_setting("ai_model") or os.environ.get("AI_MODEL","llama-3.3-70b-versatile")
     sys=("Sen bir TOEFL Structure & Written Expression öğretmenisin. Türkçe, kısa ve net açıkla. "
          "Doğru cevabın neden doğru, diğer şıkların neden yanlış olduğunu maddeler hâlinde söyle. "
          "Gramer kuralını basitçe hatırlat.")
