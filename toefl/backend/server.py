@@ -45,7 +45,14 @@ os.makedirs(DB_DIR, exist_ok=True)
 DB   = os.path.join(DB_DIR, "toefl.db")
 FRONTEND = os.path.abspath(os.path.join(HERE, ".."))
 
-ADMIN_EMAILS = {e.strip().lower() for e in os.environ.get("TOEFL_ADMIN_EMAILS", "").split(",") if e.strip()}
+# TEK ADMIN: cagri@gmail.com. Başka kimse admin olamaz.
+# (İstenirse TOEFL_ADMIN_EMAILS / ADMIN_EMAIL env ile ek admin eklenebilir.)
+DEFAULT_ADMIN_EMAIL = "cagri@gmail.com"
+ADMIN_EMAILS = {DEFAULT_ADMIN_EMAIL}
+ADMIN_EMAILS |= {e.strip().lower() for e in os.environ.get("TOEFL_ADMIN_EMAILS", "").split(",") if e.strip()}
+_env_admin = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+if _env_admin:
+    ADMIN_EMAILS.add(_env_admin)
 
 # ---------------------------------------------------------------- DB
 def db():
@@ -102,20 +109,29 @@ def set_setting(k, v):
         con.execute("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (k, v))
 
 def seed_admin():
-    """ADMIN_EMAIL + ADMIN_PASSWORD env'i verilmişse o admin hesabını oluştur/yetkilendir."""
-    em = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+    """ADMIN_PASSWORD env'i verilmişse admin hesabını otomatik oluşturur (opsiyonel).
+    Şifre koda yazılmaz; verilmezse admin, siteye normal kayıt olarak hesabını açar."""
+    em = (os.environ.get("ADMIN_EMAIL", "").strip().lower() or DEFAULT_ADMIN_EMAIL)
     pw = os.environ.get("ADMIN_PASSWORD", "")
-    if not em or not pw:
+    if pw:
+        with closing(db()) as con, con:
+            row = con.execute("SELECT * FROM users WHERE email=?", (em,)).fetchone()
+            if not row:
+                salt = secrets.token_hex(8)
+                con.execute("""INSERT INTO users(email,name,first_name,last_name,pwhash,salt,is_admin,created,last_seen)
+                               VALUES(?,?,?,?,?,?,1,?,?)""",
+                            (em, "Admin", "Admin", "", hash_pw(pw, salt), salt, time.time(), time.time()))
+    enforce_admins()
+
+def enforce_admins():
+    """SADECE ADMIN_EMAILS'teki hesaplar admin; diğer herkesin yöneticiliği kaldırılır."""
+    if not ADMIN_EMAILS:
         return
+    qs = ",".join("?" * len(ADMIN_EMAILS))
+    emails = tuple(ADMIN_EMAILS)
     with closing(db()) as con, con:
-        row = con.execute("SELECT * FROM users WHERE email=?", (em,)).fetchone()
-        if row:
-            con.execute("UPDATE users SET is_admin=1 WHERE id=?", (row["id"],))
-        else:
-            salt = secrets.token_hex(8)
-            con.execute("""INSERT INTO users(email,name,first_name,last_name,pwhash,salt,is_admin,created,last_seen)
-                           VALUES(?,?,?,?,?,?,1,?,?)""",
-                        (em, "Admin", "Admin", "", hash_pw(pw, salt), salt, time.time(), time.time()))
+        con.execute(f"UPDATE users SET is_admin=0 WHERE lower(email) NOT IN ({qs})", emails)
+        con.execute(f"UPDATE users SET is_admin=1 WHERE lower(email) IN ({qs})", emails)
 seed_admin()
 def make_token(): return secrets.token_urlsafe(32)
 
@@ -201,8 +217,7 @@ def register(b: RegisterIn):
     name=(fn+" "+ln).strip()
     salt=secrets.token_hex(8); pwh=hash_pw(b.password,salt)
     with closing(db()) as con, con:
-        n_users = con.execute("SELECT COUNT(*) c FROM users").fetchone()["c"]
-        is_admin = 1 if (email in ADMIN_EMAILS or n_users==0) else 0   # ilk üye = admin
+        is_admin = 1 if email in ADMIN_EMAILS else 0   # SADECE admin e-postası admin olur
         try:
             cur=con.execute("""INSERT INTO users(email,name,first_name,last_name,pwhash,salt,is_admin,created,last_seen)
                                VALUES(?,?,?,?,?,?,?,?,?)""",
