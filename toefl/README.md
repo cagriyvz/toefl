@@ -47,6 +47,23 @@ toefl/
 | 6 | İsimler & Zamirler | 19–23 |
 | 7 | Sıfat & Zarf + Genel tekrar | 24–25 |
 
-## 🌐 Yayınlama (opsiyonel)
-Statik olduğu için herhangi bir yere konabilir: GitHub Pages, Netlify, Vercel.
-GitHub Pages için: repo ayarları → Pages → kaynağı bu klasör olarak seç.
+## 📝 Modlar
+- **Skill quiz** — derste öğrendiğini anında geri bildirimle pekiştir
+- **🩺 Tanı testi** — zayıf konuları bul
+- **⏱️ Tam Deneme** — 25 dk / 40 soru (15 Structure + 25 Written), gerçek sınav gibi; süre dolunca otomatik biter, sonunda çözümlü değerlendirme
+- **🔁 Tekrar Havuzu** — yanlış yaptığın tüm sorular otomatik birikir; doğru cevaplayınca havuzdan düşer
+
+## 🌐 GitHub Pages'e yayınlama (telefondan çalışmak için)
+Repoda hazır bir GitHub Actions workflow'u var (`.github/workflows/deploy-pages.yml`).
+Tek seferlik kurulum:
+
+1. Bu dal **main**'e merge edilir (PR'ı birleştir).
+2. GitHub'da: **Settings → Pages → Source = "GitHub Actions"** seç.
+3. Workflow otomatik çalışır; siten şu adreste yayınlanır:
+   `https://<kullanıcı-adın>.github.io/<repo-adı>/`
+   (örn. `https://cagriyvz.github.io/lexi-full/`)
+
+Telefonda o adresi aç — anasayfaya kısayol ekleyerek uygulama gibi kullanabilirsin.
+İlerleme telefonun tarayıcısında (`localStorage`) saklanır.
+
+> Alternatif: statik olduğu için Netlify veya Vercel'e de sürükle-bırak yüklenebilir.
