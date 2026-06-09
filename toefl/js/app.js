@@ -730,23 +730,29 @@ const App = (() => {
     const examBest=prog.examBest!=null?prog.examBest:(progress.examBest!=null?progress.examBest:null);
     const vocabKnown=(JSON.parse(localStorage.getItem("toefl_vocab")||"{}").known||[]).length;
     const skillChip=id=>`<a class="chip" href="#" onclick="App.go('lesson',${id});return false">Skill ${id} · ${esc(CURRICULUM.skills[id].title)}</a>`;
-    const hist=(prog.examHistory||[]).slice().reverse().slice(0,8).map(h=>{
-      const d=new Date(h.date*1000||h.date); return `<div class="hist-row"><span>${h.correct}/${h.total} (${h.score}%)</span><small>${isNaN(d)?'':d.toLocaleDateString('tr-TR')}</small></div>`;
-    }).join("") || `<p class="cat">Henüz tam deneme yok.</p>`;
+    const acc = prog.accuracy!=null ? prog.accuracy : null;
+    // Girdiği TÜM quizler/sorular
+    const allHist=(prog.history||[]).map(h=>{
+      const d=new Date((h.date*1000)||h.date);
+      const label = MODE_TR[h.mode]||h.mode;
+      const skill = h.skill?(" · skill "+h.skill):"";
+      return `<div class="hist-row"><span>${esc(label)}${skill} — ${h.correct}/${h.total} (%${h.score})</span><small>${isNaN(d)?'':d.toLocaleString('tr-TR')}</small></div>`;
+    }).join("") || `<p class="cat">Henüz çözüm yok. Tanı testi ya da bir konu quiziyle başla!</p>`;
     el.innerHTML = `
       <div class="hero-row" style="margin:0 0 18px">
+        <div class="stat"><b>${acc!=null?acc+"%":"—"}</b><span>Başarı oranı</span></div>
         <div class="stat"><b>${done}/${total}</b><span>Tamamlanan beceri</span></div>
         <div class="stat"><b>${examBest!=null?examBest+"%":"—"}</b><span>En iyi deneme</span></div>
-        <div class="stat"><b>${prog.completedExams||0}</b><span>Tam deneme</span></div>
         <div class="stat"><b>${prog.totalAttempts||0}</b><span>Toplam çözüm</span></div>
+        <div class="stat"><b>${prog.totalCorrect||0}/${prog.totalQuestions||0}</b><span>Doğru / soru</span></div>
         <div class="stat"><b>${vocabKnown}</b><span>Bilinen kelime</span></div>
       </div>
       <div class="section-title">💪 Güçlü olduğun konular (${strong.length})</div>
       <div class="chips">${strong.length?strong.map(skillChip).join(""):'<span class="cat">Henüz tamamlanan konu yok.</span>'}</div>
       <div class="section-title">📌 Eksiklerin / tekrar etmen gerekenler (${weak.length})</div>
       <div class="chips">${weak.length?weak.map(skillChip).join(""):'<span class="cat">Belirgin eksik görünmüyor. 👏</span>'}</div>
-      <div class="section-title">📝 Son deneme sonuçların</div>
-      <div class="hist">${hist}</div>
+      <div class="section-title">📝 Girdiğin tüm quizler (${(prog.history||[]).length})</div>
+      <div class="hist" style="max-height:340px;overflow:auto">${allHist}</div>
       <div class="lesson-actions" style="margin-top:18px">
         <button class="btn" onclick="App.go('progress')">📊 Detaylı ilerleme</button>
         <button class="btn sec" onclick="App.go('review')">🔁 Tekrar havuzu (${progress.wrong.length})</button>
@@ -781,6 +787,8 @@ const App = (() => {
   function refreshAccountNav(){
     const el=document.getElementById("nav-account");
     const ad=document.getElementById("nav-admin");
+    const dg=document.getElementById("nav-diag");
+    if(dg){ dg.style.display = diagnosticDone() ? "none" : ""; }  // tanı yapılınca menüden kaybolur
     if(ad){ const u=API.user(); ad.innerHTML=(API.authed()&&u&&u.isAdmin)?`<button onclick="App.go('admin')">🛠️ Admin</button>`:""; }
     if(!el) return;
     if(API.authed()){ const u=API.user(); el.innerHTML=`<button onclick="App.go('account')">👤 ${esc((u&&u.firstName)||(u&&u.name)||"Hesap")}</button>`; }

@@ -193,8 +193,13 @@ def build_progress(uid):
         rows = con.execute("SELECT * FROM attempts WHERE user_id=? ORDER BY created", (uid,)).fetchall()
     skills, exams, completed, exam_best = {}, [], 0, None
     by_mode = {}
+    tot_correct = tot_q = 0
+    history = []
     for r in rows:
         by_mode[r["mode"]] = by_mode.get(r["mode"],0)+1
+        tot_correct += r["correct"]; tot_q += r["total"]
+        history.append({"mode":r["mode"],"skill":r["skill"],"correct":r["correct"],
+                        "total":r["total"],"score":r["score"],"date":r["created"]})
         if r["mode"]=="practice" and r["skill"] is not None:
             s = skills.setdefault(str(r["skill"]), {"best":0,"attempts":0,"done":False})
             s["best"]=max(s["best"],r["score"]); s["attempts"]+=1
@@ -205,9 +210,12 @@ def build_progress(uid):
             completed += 1
     weak = sorted(int(k) for k,v in skills.items() if v["best"]<70)
     strong = sorted(int(k) for k,v in skills.items() if v["done"])
+    accuracy = round(tot_correct/tot_q*100) if tot_q else None
     return {"skills":skills,"examBest":exam_best,"examHistory":exams[-20:],
             "completedExams":completed,"totalAttempts":len(rows),
-            "byMode":by_mode,"weakSkills":weak,"strongSkills":strong}
+            "byMode":by_mode,"weakSkills":weak,"strongSkills":strong,
+            "accuracy":accuracy,"totalCorrect":tot_correct,"totalQuestions":tot_q,
+            "history":list(reversed(history))[:60]}
 
 # ---------------------------------------------------------------- app
 app = FastAPI(title="TOEFL Structure API")
