@@ -57,9 +57,6 @@ body.locked .brand{cursor:default}
 .form-err{color:var(--bad);font-size:13px;min-height:18px;font-weight:600}
 .form-switch{text-align:center;font-size:14px;color:var(--muted)}
 .form-switch a{font-weight:700;text-decoration:none}
-.api-settings{margin-top:6px;border-top:1px solid var(--line);padding-top:12px}
-.api-settings summary{cursor:pointer;font-size:13px;color:var(--muted)}
-.api-settings input{width:100%;margin:8px 0}
 .online-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle}
 .online-dot.ok{background:var(--good)} .online-dot.no{background:var(--bad)}
 .btn.sm{padding:8px 14px;font-size:13px}
