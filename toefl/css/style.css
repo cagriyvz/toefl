@@ -36,9 +36,8 @@ a{color:var(--accent)}
 #nav-account button,#nav-admin button{background:var(--panel2);border:1px solid var(--line);color:var(--txt)}
 #nav-account button:hover{border-color:var(--accent);background:var(--panel2)}
 #nav-admin button{color:var(--warn);border-color:#5c4a23}
-/* Giriş kapısı kilitliyken menüyü gizle */
-body.locked .topnav,body.locked .nav-toggle{display:none}
-body.locked .brand{cursor:default}
+/* Giriş kapısı kilitliyken üst barı tamamen gizle (login ekranı temiz olsun) */
+body.locked .topbar{display:none}
 #nav-account button{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;color:#fff}
 .nav-toggle{display:none;background:var(--panel2);color:var(--txt);border:1px solid var(--line);
   border-radius:10px;font-size:20px;line-height:1;padding:6px 12px}
