@@ -29,13 +29,40 @@ URL yeterli. Aşağıda 3 yol var; en kolayı **Railway**.
 
 ---
 
-## Seçenek 3 — Docker (herhangi bir sunucu / Fly.io)
-`toefl/` klasöründen (build context = toefl):
-```bash
-docker build -f backend/Dockerfile -t toefl .
-docker run -p 8000:8000 -v $(pwd)/data:/var/data -e TOEFL_DB_DIR=/var/data toefl
-# → http://localhost:8000
+## Seçenek 4 — VPS (Hostinger/DigitalOcean) + kendi domain'in  ⭐ kalıcı, profesyonel
+Tek komutla: kalıcı Postgres + uygulama + **otomatik HTTPS** (Caddy). `docker-compose.yml`
+ve `Caddyfile` repoda hazır (`toefl/` klasöründe).
+
+**1) Domain'in DNS'ini VPS'e yönlendir**
+Domain panelinde (Hostinger/Cloudflare vb.) bir **A kaydı** ekle:
 ```
+Tip: A    İsim: @     Değer: <VPS_IP_ADRESİN>
+(www için de:  A   www   <VPS_IP>)
+```
+
+**2) VPS'e bağlan, Docker kur** (Ubuntu):
+```bash
+ssh root@<VPS_IP>
+curl -fsSL https://get.docker.com | sh
+```
+
+**3) Projeyi çek ve başlat:**
+```bash
+git clone https://github.com/cagriyvz/lexi-full.git
+cd lexi-full/toefl
+DOMAIN=alanadin.com \
+ADMIN_EMAIL=cagri@gmail.com \
+ADMIN_PASSWORD=C4gr1007 \
+AI_API_KEY=gsk_xxx \
+DB_PASSWORD=guclu-bir-sifre \
+docker compose up -d --build
+```
+
+**4) Bitti** → `https://alanadin.com` açılır (Caddy ücretsiz SSL'i otomatik alır, ~1 dk).
+- Veriler `dbdata` volume'unda **kalıcı** (yeniden başlatma/deploy silmez).
+- Güncelleme: `git pull && docker compose up -d --build`
+
+> Domain yoksa: VPS IP'siyle `http://<VPS_IP>` de çalışır ama HTTPS için domain şart.
 
 ---
 

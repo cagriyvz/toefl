@@ -1,0 +1,6 @@
+# Caddy — otomatik HTTPS reverse proxy.
+# DOMAIN ortam değişkeni docker-compose'tan gelir.
+{$DOMAIN} {
+	reverse_proxy app:8000
+	encode gzip
+}

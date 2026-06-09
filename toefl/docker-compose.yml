@@ -1,0 +1,45 @@
+# TOEFL Structure — VPS için tek komutluk kurulum
+# Çalıştırma:  DOMAIN=alanadin.com ADMIN_PASSWORD=xxx docker compose up -d --build
+# Gereken: VPS'te Docker + Docker Compose kurulu olması ve domainin A kaydının
+# bu sunucunun IP'sine bakması. Caddy otomatik ücretsiz SSL (HTTPS) alır.
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: toefl
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-toeflpass}
+      POSTGRES_DB: toefl
+    volumes:
+      - dbdata:/var/lib/postgresql/data   # KALICI veri (silinmez)
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://toefl:${DB_PASSWORD:-toeflpass}@db:5432/toefl
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-cagri@gmail.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-llama-3.3-70b-versatile}
+    depends_on: [db]
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on: [app]
+    restart: unless-stopped
+
+volumes:
+  dbdata:
+  caddydata:
+  caddyconfig:
