@@ -86,6 +86,10 @@ def init_db():
           id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER,
           type TEXT NOT NULL, data TEXT, created REAL NOT NULL);
         CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT);
+        CREATE TABLE IF NOT EXISTS tickets(
+          id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER,
+          name TEXT, email TEXT, category TEXT, message TEXT NOT NULL,
+          status TEXT DEFAULT 'open', created REAL NOT NULL);
         """)
         # eski DB'ler için güvenli kolon ekleme
         cols = {r["name"] for r in con.execute("PRAGMA table_info(users)")}
@@ -177,6 +181,11 @@ class SettingsIn(BaseModel):
 class UserEditIn(BaseModel):
     firstName: Optional[str] = None
     lastName: Optional[str] = None
+class TicketIn(BaseModel):
+    category: str = "Genel"
+    message: str
+class TicketUpdateIn(BaseModel):
+    status: str
 
 # ---------------------------------------------------------------- progress
 def build_progress(uid):
@@ -279,6 +288,36 @@ def event(b: EventIn, user=Depends(current_user)):
 def progress(user=Depends(current_user)):
     return build_progress(user["id"])
 
+# ---------------------------------------------------------------- DESTEK / TALEP
+@app.post("/api/ticket")
+def create_ticket(b: TicketIn, user=Depends(current_user)):
+    msg=(b.message or "").strip()
+    if len(msg)<3: raise HTTPException(400,"Mesaj çok kısa")
+    with closing(db()) as con, con:
+        con.execute("""INSERT INTO tickets(user_id,name,email,category,message,status,created)
+                       VALUES(?,?,?,?,?,'open',?)""",
+                    (user["id"],user["name"],user["email"],(b.category or "Genel").strip(),msg[:2000],time.time()))
+    log_event(user["id"],"ticket",{"category":b.category})
+    return {"ok":True}
+
+@app.get("/api/admin/tickets")
+def admin_tickets(admin=Depends(require_admin)):
+    with closing(db()) as con:
+        rows=con.execute("SELECT * FROM tickets ORDER BY (status='open') DESC, created DESC LIMIT 300").fetchall()
+    return {"tickets":[dict(r) for r in rows]}
+
+@app.post("/api/admin/ticket/{tid}")
+def admin_update_ticket(tid: int, b: TicketUpdateIn, admin=Depends(require_admin)):
+    with closing(db()) as con, con:
+        con.execute("UPDATE tickets SET status=? WHERE id=?",(b.status,tid))
+    return {"ok":True}
+
+@app.delete("/api/admin/ticket/{tid}")
+def admin_delete_ticket(tid: int, admin=Depends(require_admin)):
+    with closing(db()) as con, con:
+        con.execute("DELETE FROM tickets WHERE id=?",(tid,))
+    return {"ok":True}
+
 @app.get("/api/leaderboard")
 def leaderboard():
     with closing(db()) as con:
@@ -373,7 +412,8 @@ def admin_stats(admin=Depends(require_admin)):
         attempts=con.execute("SELECT COUNT(*) c FROM attempts").fetchone()["c"]
         exams=con.execute("SELECT COUNT(*) c FROM attempts WHERE mode='exam'").fetchone()["c"]
         active=con.execute("SELECT COUNT(*) c FROM users WHERE last_seen>?",(time.time()-7*86400,)).fetchone()["c"]
-    return {"users":users,"attempts":attempts,"exams":exams,"activeWeek":active}
+        open_tickets=con.execute("SELECT COUNT(*) c FROM tickets WHERE status='open'").fetchone()["c"]
+    return {"users":users,"attempts":attempts,"exams":exams,"activeWeek":active,"openTickets":open_tickets}
 
 # ---------------------------------------------------------------- AI (ücretsiz, OpenAI-uyumlu)
 @app.post("/api/explain")

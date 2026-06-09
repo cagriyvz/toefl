@@ -95,6 +95,8 @@ const App = (() => {
     if (route==="admin") return renderAdmin();
     if (route==="adminuser") return renderAdminUser(arg);
     if (route==="adminsettings") return renderAdminSettings();
+    if (route==="admintickets") return renderAdminTickets();
+    if (route==="support") return renderSupport();
   }
 
   // --- HOME --------------------------------------------------------------
@@ -791,7 +793,10 @@ const App = (() => {
     view().innerHTML=`<button class="back" onclick="App.go('home')">← Ana sayfa</button>
       <div class="hero"><h1>🛠️ Admin Paneli</h1><p>Tüm üyeler, bilgileri ve gelişimleri.</p>
         <div class="hero-row" id="adm-stats"></div>
-        <div class="lesson-actions"><button class="btn sec" onclick="App.go('adminsettings')">⚙️ AI / API Ayarları</button></div>
+        <div class="lesson-actions">
+          <button class="btn sec" onclick="App.go('admintickets')">📨 Talepler</button>
+          <button class="btn sec" onclick="App.go('adminsettings')">⚙️ AI / API Ayarları</button>
+        </div>
       </div>
       <div class="section-title">Üyeler</div>
       <div id="adm-users"><p class="empty">Yükleniyor…</p></div>`;
@@ -802,7 +807,7 @@ const App = (() => {
         <div class="stat"><b>${st.users}</b><span>Üye</span></div>
         <div class="stat"><b>${st.activeWeek}</b><span>Bu hafta aktif</span></div>
         <div class="stat"><b>${st.attempts}</b><span>Toplam çözüm</span></div>
-        <div class="stat"><b>${st.exams}</b><span>Tam deneme</span></div>`;
+        <div class="stat"><b>${st.openTickets||0}</b><span>Açık talep</span></div>`;
       const r=await API.adminUsers();
       const body=document.getElementById("adm-users"); if(!body) return;
       const rows=r.users.map(u=>`
@@ -1025,6 +1030,76 @@ const App = (() => {
         <button class="btn sec" onclick="App.go('vocab')">Kelime ana sayfa</button></div>`;
   }
 
+  // --- DESTEK / GERİ BİLDİRİM -------------------------------------------
+  function renderSupport(){
+    if(!API.authed()){ return go("auth"); }
+    view().innerHTML = `<button class="back" onclick="App.go('home')">← Ana sayfa</button>
+      <div class="card auth-card">
+        <h2>💬 Destek & Geri Bildirim</h2>
+        <p class="cat">Hata bildir, öneride bulun ya da talep oluştur. Ekibimiz (admin) görecek.</p>
+        <div class="form">
+          <label>Konu
+            <select id="tk-cat">
+              <option>Hata bildirimi</option>
+              <option>Öneri</option>
+              <option>Soru / yardım</option>
+              <option>Diğer</option>
+            </select>
+          </label>
+          <label>Mesajın
+            <textarea id="tk-msg" rows="5" placeholder="Yaşadığın sorunu ya da öneriyi detaylı yaz..."></textarea>
+          </label>
+          <div class="form-err" id="tk-err"></div>
+          <button class="btn" id="tk-submit" onclick="App.submitTicket()">Gönder →</button>
+        </div>
+      </div>`;
+  }
+  async function submitTicket(){
+    const cat=document.getElementById("tk-cat").value;
+    const msg=document.getElementById("tk-msg").value.trim();
+    const err=document.getElementById("tk-err");
+    if(msg.length<3){ err.style.color="var(--bad)"; err.textContent="Lütfen biraz daha detay yaz."; return; }
+    const btn=document.getElementById("tk-submit"); btn.disabled=true; btn.textContent="Gönderiliyor...";
+    try{
+      await API.createTicket(cat,msg);
+      view().innerHTML=`<div class="card result-card" style="--deg:360deg">
+        <div class="score-ring"><div class="inner">✓</div></div>
+        <h2>Teşekkürler! 🙏</h2><p>Geri bildirimin bize ulaştı. En kısa sürede bakacağız.</p>
+        <div class="lesson-actions" style="justify-content:center">
+          <button class="btn" onclick="App.go('home')">Ana sayfa</button></div></div>`;
+    }catch(e){ err.style.color="var(--bad)"; err.textContent=e.message; btn.disabled=false; btn.textContent="Gönder →"; }
+  }
+
+  // --- ADMIN: TALEPLER ---------------------------------------------------
+  async function renderAdminTickets(){
+    if(!(API.authed()&&API.user()&&API.user().isAdmin)){ return go("home"); }
+    view().innerHTML=`<button class="back" onclick="App.go('admin')">← Admin paneli</button>
+      <div class="hero"><h1>📨 Destek Talepleri</h1><p>Kullanıcı geri bildirimleri ve hata bildirimleri.</p></div>
+      <div id="tk-list"><p class="empty">Yükleniyor…</p></div>`;
+    try{
+      const r=await API.adminTickets();
+      const el=document.getElementById("tk-list"); if(!el) return;
+      if(!r.tickets.length){ el.innerHTML=`<p class="empty">Henüz talep yok.</p>`; return; }
+      el.innerHTML=r.tickets.map(t=>`
+        <div class="tk-card ${t.status==='open'?'open':'done'}">
+          <div class="tk-top">
+            <span class="pill ${t.status==='open'?'written':'struct'}">${t.status==='open'?'AÇIK':'çözüldü'}</span>
+            <b>${esc(t.category||"Genel")}</b>
+            <span class="cat">· ${esc(t.name||"")} (${esc(t.email||"")}) · ${fmtDate(t.created)}</span>
+          </div>
+          <div class="tk-msg">${esc(t.message)}</div>
+          <div class="tk-actions">
+            ${t.status==='open'
+              ? `<button class="btn sec sm" onclick="App.ticketStatus(${t.id},'resolved')">✓ Çözüldü işaretle</button>`
+              : `<button class="btn sec sm" onclick="App.ticketStatus(${t.id},'open')">↺ Yeniden aç</button>`}
+            <button class="btn sec sm danger" onclick="App.ticketDelete(${t.id})">🗑️ Sil</button>
+          </div>
+        </div>`).join("");
+    }catch(e){ const el=document.getElementById("tk-list"); if(el) el.innerHTML=`<p class="empty">Yüklenemedi: ${esc(e.message)}</p>`; }
+  }
+  async function ticketStatus(id,st){ try{ await API.adminUpdateTicket(id,st); renderAdminTickets(); }catch(e){ alert(e.message); } }
+  async function ticketDelete(id){ if(!confirm("Talep silinsin mi?"))return; try{ await API.adminDeleteTicket(id); renderAdminTickets(); }catch(e){ alert(e.message); } }
+
   // --- RESET -------------------------------------------------------------
   function resetProgress(){
     if (confirm("Tüm yerel ilerlemen silinecek. Emin misin?")){
@@ -1059,5 +1134,6 @@ const App = (() => {
   return { go:(r,a)=>go(r,a), answerMC, answerErr, next, prevExam, nextSkill, resetProgress,
            beginDiagnostic:renderDiagnosticInternal, beginExam:startExam, confirmQuit,
            submitAuth, doLogout, aiExplain,
-           flashReveal, flashNext, adminDelete, saveAiSettings, adminEditName };
+           flashReveal, flashNext, adminDelete, saveAiSettings, adminEditName,
+           submitTicket, ticketStatus, ticketDelete };
 })();

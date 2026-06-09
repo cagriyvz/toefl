@@ -53,6 +53,25 @@ body.locked .topbar{display:none}
 .form input{background:var(--panel2);border:1.5px solid var(--line);color:var(--txt);
   border-radius:10px;padding:12px 14px;font-size:15px;font-family:inherit}
 .form input:focus{outline:none;border-color:var(--accent)}
+.form select,.form textarea{background:var(--panel2);border:1.5px solid var(--line);color:var(--txt);
+  border-radius:10px;padding:12px 14px;font-size:15px;font-family:inherit;width:100%}
+.form textarea{resize:vertical;min-height:90px}
+.form select:focus,.form textarea:focus{outline:none;border-color:var(--accent)}
+
+/* Yüzen destek butonu */
+#support-fab{position:fixed;right:18px;bottom:18px;z-index:30;border:none;cursor:pointer;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:700;font-size:14px;
+  padding:12px 18px;border-radius:30px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+#support-fab:hover{filter:brightness(1.08)}
+body.locked #support-fab{display:none}
+
+/* Destek talep kartları (admin) */
+.tk-card{background:var(--panel);border:1px solid var(--line);border-left-width:4px;border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.tk-card.open{border-left-color:var(--warn)}
+.tk-card.done{border-left-color:var(--good);opacity:.8}
+.tk-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;margin-bottom:8px}
+.tk-msg{font-size:14px;line-height:1.6;white-space:pre-wrap;background:var(--panel2);border-radius:9px;padding:10px 12px}
+.tk-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 .form-err{color:var(--bad);font-size:13px;min-height:18px;font-weight:600}
 .form-switch{text-align:center;font-size:14px;color:var(--muted)}
 .form-switch a{font-weight:700;text-decoration:none}
