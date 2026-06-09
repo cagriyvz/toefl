@@ -70,11 +70,12 @@ const API = (() => {
   async function adminDeleteUser(id){ return call("/api/admin/user/"+id,{method:"DELETE"}); }
   async function adminGetSettings(){ return call("/api/admin/settings"); }
   async function adminSaveSettings(aiKey,aiModel){ return call("/api/admin/settings",{method:"POST",body:JSON.stringify({aiKey,aiModel})}); }
+  async function adminEditUser(id,firstName,lastName){ return call("/api/admin/user/"+id+"/edit",{method:"POST",body:JSON.stringify({firstName,lastName})}); }
 
   return { setBase, clearBase, base:()=>base, enabled, isOnline, authed, user:()=>user,
            health, register, login, logout, me, saveAttempt, logEvent, leaderboard,
            explain, adminUsers, adminUserDetail, adminStats, adminDeleteUser,
-           adminGetSettings, adminSaveSettings };
+           adminGetSettings, adminSaveSettings, adminEditUser };
 })();
 
 if (typeof module!=="undefined") module.exports = { API };

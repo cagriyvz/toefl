@@ -86,8 +86,9 @@ const App = (() => {
     if (route==="review") return startReview();
     if (route==="progress") return renderProgress();
     if (route==="auth") return renderAuth(arg);
-    if (route==="leaderboard") return renderLeaderboard();
     if (route==="account") return renderAccount();
+    if (route==="book") return renderBookIntro();
+    if (route==="bookquiz") return startBookQuiz();
     if (route==="vocab") return renderVocabIntro();
     if (route==="vocabflash") return startVocabFlash();
     if (route==="vocabquiz") return startVocabQuiz();
@@ -97,44 +98,64 @@ const App = (() => {
   }
 
   // --- HOME --------------------------------------------------------------
+  function skillCard(id, priority){
+    const sk=CURRICULUM.skills[id]; const st=progress.skills[id]||{};
+    const cls = sk.category==="Structure"?"struct":"written";
+    return `<div class="skill-row" onclick="App.go('lesson',${id})">
+      <div class="skill-badge ${priority?'pri':''}">${id}</div>
+      <div class="meta"><b>${esc(sk.title)}</b>
+        <small><span class="pill ${cls}">${sk.category}</span>${priority?' <span class="pill pri-pill">öncelik</span>':''}${st.best?` · en iyi: ${st.best}%`:''}</small></div>
+      <div class="check ${st.done?'done':''}">${st.done?'✓':''}</div>
+    </div>`;
+  }
   function renderHome(){
     const done = doneCount(), total = totalSkills();
     const overall = Math.round(done/total*100);
     const diag = progress.diagnostic;
     const wrongN = progress.wrong.length;
+    const u = API.user();
+    const greeting = u ? `Merhaba ${esc(u.firstName||u.name)} 👋` : "TOEFL Structure 🎯";
 
-    const days = CURRICULUM.plan.map(d=>{
-      const dp = dayProgress(d.day);
-      const tags = d.skills.map(s=>`<span class="tag">Skill ${s}</span>`).join("");
-      return `<div class="day-card" onclick="App.go('day',${d.day})">
-        <div class="day-num">Gün ${d.day}</div>
-        <h3>${esc(d.title)}</h3>
-        <div class="focus">${esc(d.focus)}</div>
-        <div class="skill-tags">${tags}</div>
-        <div class="day-prog"><i style="width:${dp.pct}%"></i></div>
-        <div class="day-prog-label">${dp.done}/${dp.total} skill tamamlandı</div>
-      </div>`;
-    }).join("");
+    // Kişiye özel plan varsa onu göster; yoksa tanı testine yönlendir
+    let planHtml;
+    if (progress.plan && progress.plan.order){
+      const weak = progress.plan.weak||[];
+      const rest = progress.plan.order.filter(id=>!weak.includes(id));
+      planHtml = `
+        <div class="section-title">🎯 Öncelikli konuların ${weak.length?`(${weak.length})`:''}</div>
+        <div class="skill-list">${ weak.length ? weak.map(id=>skillCard(id,true)).join("")
+            : '<p class="cat">Tanıda zayıf konu çıkmadı — aşağıdan istediğinden başla. 👏'}</div>
+        <div class="section-title">📚 Diğer konular</div>
+        <div class="skill-list">${rest.map(id=>skillCard(id,false)).join("")}`;
+    } else {
+      planHtml = `
+        <div class="card" style="text-align:center">
+          <h2>🩺 Önce tanı testi</h2>
+          <p class="cat">Seviyeni ölçüp <b>sana özel</b> bir plan çıkaralım. 20 soru, ~10 dk.</p>
+          <div class="lesson-actions" style="justify-content:center">
+            <button class="btn" onclick="App.go('diagnostic')">Tanı testine başla →</button>
+          </div>
+        </div>`;
+    }
 
     view().innerHTML = `
       <section class="hero">
-        <h1>Bir haftada TOEFL Structure 🎯</h1>
-        <p>25 dilbilgisi becerisi, 7 güne bölünmüş. Her gün: kuralları oku, mini quizlerle pekiştir.</p>
+        <h1>${greeting}</h1>
+        <p>${progress.plan?'Sana özel çalışma planın hazır. Öncelikli konularından başla.':'Kişisel planın için tanı testini tamamla.'}</p>
         <div class="hero-row">
-          <div class="stat"><b>${done}/${total}</b><span>Skill tamamlandı</span></div>
+          <div class="stat"><b>${done}/${total}</b><span>Tamamlanan beceri</span></div>
           <div class="stat"><b>${overall}%</b><span>Genel ilerleme</span></div>
           <div class="stat"><b>${diag ? diag.score+"/"+diag.total : "—"}</b><span>Tanı testi</span></div>
           <div class="stat"><b>${progress.examBest!=null?progress.examBest+"%":"—"}</b><span>En iyi deneme</span></div>
         </div>
         <div class="lesson-actions">
-          ${diag ? "" : `<button class="btn" onclick="App.go('diagnostic')">🩺 Tanı testiyle başla</button>`}
-          <button class="btn ${diag?'':'sec'}" onclick="App.go('day',1)">${done?'Kaldığın yerden devam':'Gün 1 ile başla'} →</button>
-          <button class="btn sec" onclick="App.go('exam')">⏱️ Tam Deneme (25 dk)</button>
-          ${wrongN?`<button class="btn sec" onclick="App.go('review')">🔁 Tekrar Havuzu (${wrongN})</button>`:""}
+          <button class="btn sec" onclick="App.go('exam')">⏱️ Tam Deneme</button>
+          <button class="btn sec" onclick="App.go('book')">📕 Kitap Soruları</button>
+          <button class="btn sec" onclick="App.go('vocab')">📚 Kelime</button>
+          ${wrongN?`<button class="btn sec" onclick="App.go('review')">🔁 Tekrar (${wrongN})</button>`:""}
         </div>
       </section>
-      <div class="section-title">7 Günlük Plan</div>
-      <div class="days">${days}</div>`;
+      ${planHtml}`;
   }
 
   // --- DAY ---------------------------------------------------------------
@@ -238,12 +259,12 @@ const App = (() => {
     const exam = Q.mode==="exam";
 
     const titles = { practice:"Skill "+Q.skillId, diagnostic:"Tanı Testi",
-                     exam:"Tam Deneme", review:"Tekrar Havuzu", vocabquiz:"Kelime Quizi" };
+                     exam:"Tam Deneme", review:"Tekrar Havuzu", vocabquiz:"Kelime Quizi", book:"📕 Kitap Soruları" };
     const body = q.type==="mc" ? mcMarkup(q, exam) : errMarkup(q, exam);
 
     const backTargets = {
       practice:`App.go('lesson',${Q.skillId})`, diagnostic:"App.go('home')",
-      exam:"App.confirmQuit()", review:"App.go('home')", vocabquiz:"App.go('vocab')"
+      exam:"App.confirmQuit()", review:"App.go('home')", vocabquiz:"App.go('vocab')", book:"App.go('book')"
     };
 
     const timer = exam ? `<span class="timer" id="timer">${fmtLeft()}</span>` : "";
@@ -404,6 +425,7 @@ const App = (() => {
     if (Q.mode==="diagnostic") return finishDiagnostic();
     if (Q.mode==="review") return finishReview();
     if (Q.mode==="vocabquiz") return finishVocab();
+    if (Q.mode==="book") return finishBook();
     finishPractice();
   }
 
@@ -425,6 +447,9 @@ const App = (() => {
   function mergeServerProgress(sp){
     if (sp.skills){ for(const k in sp.skills){ progress.skills[k]=Object.assign(progress.skills[k]||{}, sp.skills[k]); } }
     if (sp.examBest!=null) progress.examBest = Math.max(progress.examBest||0, sp.examBest);
+    if (sp.weakSkills) progress.serverWeak = sp.weakSkills;
+    if (sp.strongSkills) progress.serverStrong = sp.strongSkills;
+    if (sp.byMode && sp.byMode.diagnostic) progress.diagnosticDone = true;
     save();
   }
 
@@ -481,28 +506,44 @@ const App = (() => {
         <div class="lesson-actions"><button class="btn" onclick="App.beginDiagnostic()">Teste başla →</button></div>
       </div>`;
   }
+  // Tanı sonucundan KİŞİYE ÖZEL plan üret: zayıflar önce (kitap sırasında),
+  // sonra kalan konular. Plan progress.plan'a yazılır.
+  function buildPersonalPlan(weak){
+    const all = Object.keys(CURRICULUM.skills).map(Number);
+    const w = weak.slice().sort((a,b)=>a-b);
+    const rest = all.filter(id=>!w.includes(id));
+    return { order:[...w, ...rest], weak:w, createdAt:Date.now() };
+  }
   function finishDiagnostic(){
     const n=Q.questions.length;
     const weak=Object.keys(Q.wrongSkills).map(Number).sort((a,b)=>a-b);
-    progress.diagnostic={ score:Q.correct, total:n, weak }; save();
+    progress.diagnostic={ score:Q.correct, total:n, weak };
+    progress.diagnosticDone=true;
+    progress.plan=buildPersonalPlan(weak);
+    save();
     recordAttempt("diagnostic", null, Q.correct, n);
     const pct=Math.round(Q.correct/n*100);
-    let weakHtml;
+    const lvl = pct>=80?"İyi seviyedesin 👏":pct>=50?"Orta seviyedesin 💪":"Temelden çalışmalısın 📚";
+    let body;
     if(!weak.length){
-      weakHtml=`<p style="color:var(--good);font-weight:600">Harika — belirgin bir zayıf konun yok! 🎉 Yine de planı baştan sona geçmeni öneririm.</p>`;
+      body=`<p style="color:var(--good);font-weight:600;text-align:center">Harika — belirgin bir zayıf konun yok! 🎉</p>
+        <p class="cat" style="text-align:center">Yine de planı baştan sona geçmeni öneririm.</p>`;
     } else {
-      weakHtml=`<div class="weak-list">${weak.map(id=>{
-        const sk=CURRICULUM.skills[id];
-        return `<div class="weak-item"><span>Skill ${id} — ${esc(sk.title)}</span>
-          <a href="#" onclick="App.go('lesson',${id});return false">Çalış →</a></div>`;
-      }).join("")}</div>`;
+      const days = Math.ceil(weak.length/3);
+      body=`<p class="cat" style="text-align:center">Sana özel çıkardığım plana göre önce şu <b>${weak.length}</b> konuya
+        odaklan (yaklaşık <b>${days} gün</b>), sonra kalanları pekiştir:</p>
+        <div class="weak-list">${weak.map((id,i)=>{
+          const sk=CURRICULUM.skills[id];
+          return `<div class="weak-item"><span><b>${i+1}.</b> Skill ${id} — ${esc(sk.title)}</span>
+            <a href="#" onclick="App.go('lesson',${id});return false">Çalış →</a></div>`;
+        }).join("")}</div>`;
     }
-    view().innerHTML = ringCard(pct,"Tanı testi tamamlandı",`${Q.correct}/${n} doğru`) + `
-      <div class="section-title">Öncelik vermen gereken konular</div>${weakHtml}
-      <div class="lesson-actions" style="margin-top:18px">
-        <button class="btn" onclick="App.go('${weak.length?'lesson':'day'}',${weak.length?weak[0]:1})">
-          ${weak.length?'İlk zayıf konuyla başla':'Gün 1 ile başla'} →</button>
-        <button class="btn sec" onclick="App.go('home')">Plana dön</button>
+    view().innerHTML = ringCard(pct,"Tanı testi tamamlandı 🩺",`${Q.correct}/${n} doğru · ${lvl}`) + `
+      <div class="section-title">🎯 Sana özel çalışma planın</div>${body}
+      <div class="lesson-actions" style="margin-top:18px;justify-content:center">
+        <button class="btn" onclick="App.go('${weak.length?'lesson':'home'}'${weak.length?','+weak[0]:''})">
+          ${weak.length?'İlk konuyla başla':'Çalışmaya başla'} →</button>
+        <button class="btn sec" onclick="App.go('home')">Planımı gör</button>
       </div>`;
   }
 
@@ -592,62 +633,59 @@ const App = (() => {
       <div class="prog-grid">${cells}</div>`;
   }
 
-  // --- AUTH (giriş / kayıt) ----------------------------------------------
+  // --- AUTH (giriş / kayıt) — uygulamanın ilk ekranı ---------------------
   function renderAuth(mode){
     mode = mode || "login";
     const reg = mode==="register";
-    const apiInfo = API.enabled()
-      ? (API.isOnline() ? `<span class="online-dot ok"></span> Sunucu bağlı`
-                        : `<span class="online-dot no"></span> Sunucuya ulaşılamıyor`)
-      : `<span class="online-dot no"></span> Sunucu ayarlı değil (misafir mod)`;
     view().innerHTML = `
-      <button class="back" onclick="App.go('home')">← Ana sayfa</button>
-      <div class="card auth-card">
-        <h2>${reg?"📝 Kayıt Ol":"🔑 Giriş Yap"}</h2>
-        <p class="cat">${apiInfo}</p>
-        <div class="form">
-          ${reg?`<div class="form-row">
-            <label>Ad<input id="au-first" placeholder="Adın" autocomplete="given-name"></label>
-            <label>Soyad<input id="au-last" placeholder="Soyadın" autocomplete="family-name"></label>
-          </div>`:""}
-          <label>E-posta (gmail)<input id="au-email" type="email" placeholder="ornek@gmail.com" autocomplete="email"></label>
-          <label>Şifre<input id="au-pass" type="password" placeholder="••••••" autocomplete="${reg?'new-password':'current-password'}"></label>
-          <div class="form-err" id="au-err"></div>
-          <button class="btn" id="au-submit" onclick="App.submitAuth('${mode}')">${reg?"Kayıt ol":"Giriş yap"}</button>
-          <div class="form-switch">
-            ${reg?`Zaten hesabın var mı? <a href="#" onclick="App.go('auth','login');return false">Giriş yap</a>`
-                 :`Hesabın yok mu? <a href="#" onclick="App.go('auth','register');return false">Kayıt ol</a>`}
+      <div class="auth-wrap">
+        <div class="card auth-card">
+          <div class="auth-brand"><div class="auth-logo">📘</div>
+            <h2>TOEFL Structure</h2>
+            <p class="cat">${reg?"Hesap oluştur, tanı testiyle başla":"Hesabına giriş yap"}</p>
           </div>
-          <details class="api-settings"><summary>Sunucu adresi (gelişmiş)</summary>
-            <p class="cat" style="margin:8px 0">Backend başka yerde çalışıyorsa adresini gir (ör. http://localhost:8000).
-            Boş bırakırsan misafir modda yereldeki ilerlemenle çalışırsın.</p>
-            <input id="au-base" placeholder="http://localhost:8000" value="${esc(API.base()||"")}">
-            <button class="btn sec sm" onclick="App.saveApiBase()">Kaydet & bağlan</button>
-          </details>
+          <div class="form">
+            ${reg?`<div class="form-row">
+              <label>Ad<input id="au-first" placeholder="Adın" autocomplete="given-name"></label>
+              <label>Soyad<input id="au-last" placeholder="Soyadın" autocomplete="family-name"></label>
+            </div>`:""}
+            <label>E-posta<input id="au-email" type="email" placeholder="ornek@gmail.com" autocomplete="email"></label>
+            <label>Şifre<input id="au-pass" type="password" placeholder="••••••"
+              autocomplete="${reg?'new-password':'current-password'}"
+              onkeydown="if(event.key==='Enter')App.submitAuth('${mode}')"></label>
+            <div class="form-err" id="au-err"></div>
+            <button class="btn" id="au-submit" onclick="App.submitAuth('${mode}')">${reg?"Kayıt ol ve başla →":"Giriş yap →"}</button>
+            <div class="form-switch">
+              ${reg?`Zaten hesabın var mı? <a href="#" onclick="App.go('auth','login');return false">Giriş yap</a>`
+                   :`Hesabın yok mu? <a href="#" onclick="App.go('auth','register');return false">Kayıt ol</a>`}
+            </div>
+          </div>
         </div>
       </div>`;
   }
-  function saveApiBase(){
-    const v=document.getElementById("au-base").value.trim();
-    API.setBase(v);
-    API.health().then(()=>go("auth", "login"));
-  }
+  // Tanı testi yapılmış mı? (yerel ya da sunucu)
+  function diagnosticDone(){ return !!(progress.diagnostic || progress.diagnosticDone); }
   async function submitAuth(mode){
     const err=document.getElementById("au-err");
     const email=document.getElementById("au-email").value.trim();
     const pass=document.getElementById("au-pass").value;
     err.textContent="";
-    if(!API.enabled()){ err.textContent="Sunucu ayarlı değil. Aşağıdan adres gir ya da misafir modda devam et."; return; }
+    if(!API.enabled()){ err.textContent="Sunucuya ulaşılamıyor. Birazdan tekrar dene."; return; }
     if(mode==="register"){
       const fn=document.getElementById("au-first").value.trim();
       const ln=document.getElementById("au-last").value.trim();
       if(!fn){ err.textContent="Ad gerekli."; return; }
       const btn=document.getElementById("au-submit"); btn.disabled=true; btn.textContent="...";
-      try{ await API.register(fn,ln,email,pass); await syncFromServer(); go("home"); }
+      try{ await API.register(fn,ln,email,pass); refreshAccountNav();
+           document.body.classList.remove("locked");
+           renderDiagnosticInternal(); }   // kayıt olur olmaz DİREKT tanı testi
       catch(e){ err.textContent=e.message||"Hata"; btn.disabled=false; btn.textContent="Kayıt ol"; }
     } else {
       const btn=document.getElementById("au-submit"); btn.disabled=true; btn.textContent="...";
-      try{ await API.login(email,pass); await syncFromServer(); go("home"); }
+      try{ await API.login(email,pass); await syncFromServer(); refreshAccountNav();
+           document.body.classList.remove("locked");
+           // Tanı testi yapılmadıysa önce onu yaptır, yoksa ana sayfa
+           if(diagnosticDone()) go("home"); else renderDiagnosticInternal(); }
       catch(e){ err.textContent=e.message||"Hata"; btn.disabled=false; btn.textContent="Giriş yap"; }
     }
   }
@@ -773,8 +811,11 @@ const App = (() => {
       body.innerHTML=`<div class="adm-head"><span>Üye</span><span>Deneme</span><span>Beceri</span><span>Çözüm</span><span>Son</span></div>${rows}`;
     }catch(e){ const b=document.getElementById("adm-users"); if(b) b.innerHTML=`<p class="empty">Yüklenemedi: ${esc(e.message)}</p>`; }
   }
-  function fmtAgo(ts){ if(!ts) return "—"; const d=(Date.now()/1000-ts); if(d<3600)return Math.round(d/60)+"dk"; if(d<86400)return Math.round(d/3600)+"sa"; return Math.round(d/86400)+"g"; }
+  function fmtAgo(ts){ if(!ts) return "—"; const d=(Date.now()/1000-ts); if(d<60)return "az önce"; if(d<3600)return Math.round(d/60)+"dk"; if(d<86400)return Math.round(d/3600)+"sa"; return Math.round(d/86400)+"g"; }
   function fmtDate(ts){ if(!ts) return "—"; const d=new Date(ts*1000); return isNaN(d)?"—":d.toLocaleString("tr-TR"); }
+  function fmtDur(secs){ if(!secs) return "0 dk"; const m=Math.round(secs/60); if(m<60) return m+" dk"; return Math.floor(m/60)+" sa "+(m%60)+" dk"; }
+  const MODE_TR={practice:"Konu quizi",exam:"Tam deneme",diagnostic:"Tanı testi",review:"Tekrar",vocab:"Kelime",book:"Kitap"};
+  function modeTr(m){ return MODE_TR[m]||m; }
 
   async function renderAdminUser(id){
     if(!(API.authed()&&API.user()&&API.user().isAdmin)){ return go("home"); }
@@ -782,31 +823,49 @@ const App = (() => {
     try{
       const d=await API.adminUserDetail(id);
       const p=d.progress, u=d.user;
-      const strong=(p.strongSkills||[]).map(s=>`Skill ${s}`).join(", ")||"—";
-      const weak=(p.weakSkills||[]).map(s=>`Skill ${s}`).join(", ")||"—";
-      const attempts=d.attempts.slice(0,30).map(a=>`<div class="hist-row"><span>${esc(a.mode)}${a.skill?(" · skill "+a.skill):""} — ${a.correct}/${a.total} (${a.score}%)</span><small>${fmtDate(a.created)}</small></div>`).join("")||`<p class="cat">Çözüm yok.</p>`;
-      const events=d.events.slice(0,30).map(e=>`<div class="hist-row"><span>${esc(e.type)}</span><small>${fmtDate(e.created)}</small></div>`).join("")||`<p class="cat">Log yok.</p>`;
+      const strong=(p.strongSkills||[]).map(s=>"Skill "+s).join(", ")||"—";
+      const weak=(p.weakSkills||[]).map(s=>"Skill "+s).join(", ")||"—";
+      const byMode=(d.byMode||[]).map(m=>`<div class="hist-row"><span>${esc(modeTr(m.mode))} · ${m.count} kez · ort. %${m.avgScore}</span><small>${fmtDur(m.seconds)}</small></div>`).join("")||`<p class="cat">—</p>`;
+      const attempts=d.attempts.slice(0,40).map(a=>`<div class="hist-row"><span>${esc(modeTr(a.mode))}${a.skill?(" · skill "+a.skill):""} — ${a.correct}/${a.total} (%${a.score})</span><small>${fmtDur(a.duration)} · ${fmtDate(a.created)}</small></div>`).join("")||`<p class="cat">Çözüm yok.</p>`;
+      const events=d.events.slice(0,40).map(e=>`<div class="hist-row"><span>${esc(modeTr(e.type))}</span><small>${fmtDate(e.created)}</small></div>`).join("")||`<p class="cat">Log yok.</p>`;
       const el=document.getElementById("adu"); if(!el) return;
       el.innerHTML=`
         <div class="card profile-head">
           <div class="avatar">${esc(((u.firstName||"?").charAt(0)+(u.lastName||"").charAt(0)).toUpperCase())}</div>
-          <div><h2 style="margin:0">${esc(u.name)}</h2><div class="cat">${esc(u.email)} ${u.isAdmin?'· <span class="badge-admin">admin</span>':''}</div>
-          <div class="cat">Kayıt: ${fmtDate(d.created)} · Son görülme: ${fmtDate(d.lastSeen)}</div></div>
+          <div style="flex:1"><h2 style="margin:0" id="adu-name">${esc(u.name)}</h2><div class="cat">${esc(u.email)} ${u.isAdmin?'· <span class="badge-admin">admin</span>':''}</div>
+          <div class="cat">Kayıt: ${fmtDate(d.created)} · Son görülme: ${fmtAgo(d.lastSeen)}</div></div>
         </div>
+        <div class="section-title">✏️ İsmi düzenle</div>
+        <div class="form-row">
+          <input id="adu-first" placeholder="Ad" value="${esc(u.firstName||"")}">
+          <input id="adu-last" placeholder="Soyad" value="${esc(u.lastName||"")}">
+          <button class="btn sm" onclick="App.adminEditName(${u.id})">Kaydet</button>
+        </div>
+        <div class="form-err" id="adu-msg"></div>
         <div class="hero-row" style="margin:14px 0">
           <div class="stat"><b>${(p.strongSkills||[]).length}</b><span>Beceri</span></div>
           <div class="stat"><b>${p.examBest!=null?p.examBest+"%":"—"}</b><span>En iyi deneme</span></div>
           <div class="stat"><b>${p.completedExams||0}</b><span>Deneme</span></div>
-          <div class="stat"><b>${p.totalAttempts||0}</b><span>Çözüm</span></div>
+          <div class="stat"><b>${d.totalAttempts||0}</b><span>Çözüm</span></div>
+          <div class="stat"><b>${fmtDur(d.totalSeconds)}</b><span>Toplam süre</span></div>
         </div>
+        <div class="section-title">⏱️ Mod bazında (süre)</div><div class="hist">${byMode}</div>
         <div class="section-title">💪 Güçlü</div><p>${esc(strong)}</p>
         <div class="section-title">📌 Eksik</div><p>${esc(weak)}</p>
-        <div class="section-title">📝 Son çözümler</div><div class="hist">${attempts}</div>
-        <div class="section-title">🧾 Son loglar</div><div class="hist">${events}</div>
+        <div class="section-title">📝 Tüm çözümler (süre + tarih)</div><div class="hist">${attempts}</div>
+        <div class="section-title">🧾 Etkinlik logları</div><div class="hist">${events}</div>
         <div class="lesson-actions" style="margin-top:18px">
           <button class="btn sec danger" onclick="App.adminDelete(${u.id})">🗑️ Kullanıcıyı sil</button>
         </div>`;
     }catch(e){ const el=document.getElementById("adu"); if(el) el.innerHTML=`<p class="empty">Yüklenemedi: ${esc(e.message)}</p>`; }
+  }
+  async function adminEditName(id){
+    const fn=document.getElementById("adu-first").value.trim();
+    const ln=document.getElementById("adu-last").value.trim();
+    const msg=document.getElementById("adu-msg");
+    try{ const r=await API.adminEditUser(id,fn,ln); msg.style.color="var(--good)"; msg.textContent="✓ Kaydedildi: "+r.name;
+         const h=document.getElementById("adu-name"); if(h)h.textContent=r.name; }
+    catch(e){ msg.style.color="var(--bad)"; msg.textContent=e.message; }
   }
   async function adminDelete(id){
     if(!confirm("Bu kullanıcı ve tüm verileri silinsin mi?")) return;
@@ -843,6 +902,37 @@ const App = (() => {
     const err=document.getElementById("set-err"); err.textContent="";
     try{ await API.adminSaveSettings(key||null, model||null); err.style.color="var(--good)"; err.textContent="✓ Kaydedildi"; await API.health(); }
     catch(e){ err.style.color="var(--bad)"; err.textContent=e.message; }
+  }
+
+  // --- KİTAP SORULARI ----------------------------------------------------
+  const HAS_BOOK = (typeof BOOK !== "undefined");
+  function renderBookIntro(){
+    const n = HAS_BOOK ? BOOK.questions.length : 0;
+    view().innerHTML = `<button class="back" onclick="App.go('home')">← Ana sayfa</button>
+      <div class="hero"><h1>📕 Kitap Soruları</h1>
+        <p>${esc(HAS_BOOK?BOOK.source:"")} — kitaptan birebir ${n} soru (Structure + Written Expression).</p>
+        <div class="lesson-actions">
+          <button class="btn" onclick="App.go('bookquiz')">Kitap testine başla (${n} soru) →</button>
+        </div></div>
+      <div class="card"><p class="cat">Bu bölümde kitabın gerçek pre-test soruları var. Çözdükçe yanlışların
+      tekrar havuzuna eklenir. Ayrıca "Tam Deneme" ve konu quizlerinde <b>sınırsız üretilen taze sorular</b> da devam ediyor.</p></div>`;
+  }
+  function startBookQuiz(){
+    if(!HAS_BOOK){ return go("home"); }
+    Q={ mode:"book", questions:BOOK.questions.map(q=>Object.assign({},q,{_id:"b"+Math.random().toString(36).slice(2)})),
+        idx:0, correct:0, answers:[], startedAt:Date.now() };
+    API.logEvent("start_book",{});
+    paintQuestion();
+  }
+  function finishBook(){
+    const n=Q.questions.length, pct=Math.round(Q.correct/n*100);
+    recordAttempt("book", null, Q.correct, n);
+    const msg=pct>=80?"Kitabı iyi sindirmişsin! 🏆":pct>=50?"Güzel, tekrar edebilirsin 💪":"Konulara dönüp pekiştir 📚";
+    view().innerHTML=ringCard(pct,msg,`${Q.correct}/${n} doğru · ${esc(BOOK.title)}`)+`
+      <div class="lesson-actions" style="justify-content:center;margin-top:18px">
+        <button class="btn" onclick="App.go('bookquiz')">Tekrar çöz</button>
+        <button class="btn sec" onclick="App.go('review')">🔁 Yanlışları tekrar et (${progress.wrong.length})</button>
+        <button class="btn sec" onclick="App.go('home')">Ana sayfa</button></div>`;
   }
 
   // --- KELİME ÇALIŞMASI --------------------------------------------------
@@ -962,6 +1052,6 @@ const App = (() => {
 
   return { go:(r,a)=>go(r,a), answerMC, answerErr, next, prevExam, nextSkill, resetProgress,
            beginDiagnostic:renderDiagnosticInternal, beginExam:startExam, confirmQuit,
-           submitAuth, saveApiBase, doLogout, aiExplain,
-           flashReveal, flashNext, adminDelete, saveAiSettings };
+           submitAuth, doLogout, aiExplain,
+           flashReveal, flashNext, adminDelete, saveAiSettings, adminEditName };
 })();

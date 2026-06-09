@@ -174,6 +174,9 @@ class ExplainIn(BaseModel):
 class SettingsIn(BaseModel):
     aiKey: Optional[str] = None
     aiModel: Optional[str] = None
+class UserEditIn(BaseModel):
+    firstName: Optional[str] = None
+    lastName: Optional[str] = None
 
 # ---------------------------------------------------------------- progress
 def build_progress(uid):
@@ -312,12 +315,30 @@ def admin_user_detail(uid: int, admin=Depends(require_admin)):
     with closing(db()) as con:
         u=con.execute("SELECT * FROM users WHERE id=?",(uid,)).fetchone()
         if not u: raise HTTPException(404,"Kullanıcı yok")
-        attempts=con.execute("SELECT * FROM attempts WHERE user_id=? ORDER BY created DESC LIMIT 100",(uid,)).fetchall()
-        events=con.execute("SELECT * FROM events WHERE user_id=? ORDER BY created DESC LIMIT 100",(uid,)).fetchall()
+        attempts=con.execute("SELECT * FROM attempts WHERE user_id=? ORDER BY created DESC LIMIT 200",(uid,)).fetchall()
+        events=con.execute("SELECT * FROM events WHERE user_id=? ORDER BY created DESC LIMIT 200",(uid,)).fetchall()
+        tot=con.execute("SELECT COALESCE(SUM(duration),0) s, COUNT(*) n FROM attempts WHERE user_id=?",(uid,)).fetchone()
+        # moda göre süre/sayı
+        permode=con.execute("""SELECT mode, COUNT(*) n, COALESCE(SUM(duration),0) secs, COALESCE(AVG(score),0) avg
+                               FROM attempts WHERE user_id=? GROUP BY mode""",(uid,)).fetchall()
     return {"user":public_user(u),"created":u["created"],"lastSeen":u["last_seen"],
             "progress":build_progress(uid),
+            "totalSeconds":tot["s"],"totalAttempts":tot["n"],
+            "byMode":[{"mode":r["mode"],"count":r["n"],"seconds":r["secs"],"avgScore":round(r["avg"])} for r in permode],
             "attempts":[dict(a) for a in attempts],
             "events":[{"type":e["type"],"data":e["data"],"created":e["created"]} for e in events]}
+
+@app.post("/api/admin/user/{uid}/edit")
+def admin_edit_user(uid: int, b: UserEditIn, admin=Depends(require_admin)):
+    with closing(db()) as con, con:
+        u=con.execute("SELECT * FROM users WHERE id=?",(uid,)).fetchone()
+        if not u: raise HTTPException(404,"Kullanıcı yok")
+        fn = b.firstName.strip() if b.firstName is not None else (u["first_name"] or "")
+        ln = b.lastName.strip()  if b.lastName  is not None else (u["last_name"] or "")
+        name=(fn+" "+ln).strip() or u["email"].split("@")[0]
+        con.execute("UPDATE users SET first_name=?, last_name=?, name=? WHERE id=?",(fn,ln,name,uid))
+    log_event(admin["id"],"admin_edit_user",{"uid":uid})
+    return {"ok":True,"name":name}
 
 @app.delete("/api/admin/user/{uid}")
 def admin_delete_user(uid: int, admin=Depends(require_admin)):
