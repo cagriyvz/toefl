@@ -26,6 +26,14 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional
 
+# Veritabanı seçimi: DATABASE_URL (Postgres) verilmişse KALICI Postgres kullanılır,
+# yoksa yerel SQLite. Postgres → veriler deploy/restart'ta SİLİNMEZ.
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+IS_PG = DATABASE_URL.startswith("postgres")
+if IS_PG:
+    import psycopg2, psycopg2.extras
+    PG_DSN = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 # .env desteği (bağımlılıksız): backend/.env varsa oradan değişkenleri yükle.
@@ -54,49 +62,68 @@ _env_admin = os.environ.get("ADMIN_EMAIL", "").strip().lower()
 if _env_admin:
     ADMIN_EMAILS.add(_env_admin)
 
-# ---------------------------------------------------------------- DB
-def db():
-    con = sqlite3.connect(DB)
-    con.row_factory = sqlite3.Row
-    con.execute("PRAGMA journal_mode=WAL")
-    return con
+# ---------------------------------------------------------------- DB (SQLite + Postgres)
+class Conn:
+    """Tek arayüz: con.execute('... ? ...', params).fetchone()/fetchall(); 'with ... , con:' ile commit."""
+    def __init__(self):
+        if IS_PG:
+            self.con = psycopg2.connect(PG_DSN)
+        else:
+            self.con = sqlite3.connect(DB)
+            self.con.row_factory = sqlite3.Row
+            self.con.execute("PRAGMA journal_mode=WAL")
+    def execute(self, sql, params=()):
+        if IS_PG:
+            cur = self.con.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute(sql.replace("?", "%s"), params)
+            return cur
+        return self.con.execute(sql, params)
+    def insert_id(self, sql, params=()):
+        if IS_PG:
+            cur = self.con.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute(sql.replace("?", "%s") + " RETURNING id", params)
+            return cur.fetchone()["id"]
+        return self.con.execute(sql, params).lastrowid
+    def commit(self): self.con.commit()
+    def close(self): self.con.close()
+    def __enter__(self): return self
+    def __exit__(self, et, ev, tb):
+        if et is None: self.con.commit()
+        else: self.con.rollback()
+        return False
+
+def db(): return Conn()
+
+PK = "SERIAL PRIMARY KEY" if IS_PG else "INTEGER PRIMARY KEY AUTOINCREMENT"
+SCHEMA = [
+  f"""CREATE TABLE IF NOT EXISTS users(
+      id {PK}, email TEXT UNIQUE NOT NULL, name TEXT NOT NULL,
+      first_name TEXT DEFAULT '', last_name TEXT DEFAULT '',
+      pwhash TEXT NOT NULL, salt TEXT NOT NULL, is_admin INTEGER DEFAULT 0,
+      created REAL NOT NULL, last_seen REAL)""",
+  """CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY, user_id INTEGER NOT NULL, created REAL NOT NULL)""",
+  f"""CREATE TABLE IF NOT EXISTS attempts(
+      id {PK}, user_id INTEGER NOT NULL, mode TEXT NOT NULL, skill INTEGER,
+      correct INTEGER NOT NULL, total INTEGER NOT NULL, score INTEGER NOT NULL,
+      duration INTEGER DEFAULT 0, created REAL NOT NULL)""",
+  f"""CREATE TABLE IF NOT EXISTS events(
+      id {PK}, user_id INTEGER, type TEXT NOT NULL, data TEXT, created REAL NOT NULL)""",
+  """CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT)""",
+  f"""CREATE TABLE IF NOT EXISTS tickets(
+      id {PK}, user_id INTEGER, name TEXT, email TEXT, category TEXT,
+      message TEXT NOT NULL, status TEXT DEFAULT 'open', created REAL NOT NULL)""",
+]
 
 def init_db():
     with closing(db()) as con, con:
-        con.executescript("""
-        CREATE TABLE IF NOT EXISTS users(
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          email TEXT UNIQUE NOT NULL,
-          name  TEXT NOT NULL,
-          first_name TEXT DEFAULT '',
-          last_name  TEXT DEFAULT '',
-          pwhash TEXT NOT NULL,
-          salt  TEXT NOT NULL,
-          is_admin INTEGER DEFAULT 0,
-          created REAL NOT NULL,
-          last_seen REAL
-        );
-        CREATE TABLE IF NOT EXISTS sessions(
-          token TEXT PRIMARY KEY, user_id INTEGER NOT NULL, created REAL NOT NULL);
-        CREATE TABLE IF NOT EXISTS attempts(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
-          mode TEXT NOT NULL, skill INTEGER, correct INTEGER NOT NULL, total INTEGER NOT NULL,
-          score INTEGER NOT NULL, duration INTEGER DEFAULT 0, created REAL NOT NULL);
-        CREATE TABLE IF NOT EXISTS events(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER,
-          type TEXT NOT NULL, data TEXT, created REAL NOT NULL);
-        CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT);
-        CREATE TABLE IF NOT EXISTS tickets(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER,
-          name TEXT, email TEXT, category TEXT, message TEXT NOT NULL,
-          status TEXT DEFAULT 'open', created REAL NOT NULL);
-        """)
-        # eski DB'ler için güvenli kolon ekleme
-        cols = {r["name"] for r in con.execute("PRAGMA table_info(users)")}
-        for c, d in [("first_name","TEXT DEFAULT ''"),("last_name","TEXT DEFAULT ''"),
-                     ("is_admin","INTEGER DEFAULT 0"),("last_seen","REAL")]:
-            if c not in cols:
-                con.execute(f"ALTER TABLE users ADD COLUMN {c} {d}")
+        for stmt in SCHEMA:
+            con.execute(stmt)
+        if not IS_PG:  # eski SQLite DB'leri için güvenli kolon ekleme
+            cols = {r["name"] for r in con.execute("PRAGMA table_info(users)")}
+            for c, d in [("first_name","TEXT DEFAULT ''"),("last_name","TEXT DEFAULT ''"),
+                         ("is_admin","INTEGER DEFAULT 0"),("last_seen","REAL")]:
+                if c not in cols:
+                    con.execute(f"ALTER TABLE users ADD COLUMN {c} {d}")
 
 init_db()
 
@@ -238,13 +265,12 @@ def register(b: RegisterIn):
     salt=secrets.token_hex(8); pwh=hash_pw(b.password,salt)
     with closing(db()) as con, con:
         is_admin = 1 if email in ADMIN_EMAILS else 0   # SADECE admin e-postası admin olur
-        try:
-            cur=con.execute("""INSERT INTO users(email,name,first_name,last_name,pwhash,salt,is_admin,created,last_seen)
-                               VALUES(?,?,?,?,?,?,?,?,?)""",
-                            (email,name,fn,ln,pwh,salt,is_admin,time.time(),time.time()))
-        except sqlite3.IntegrityError:
+        if con.execute("SELECT 1 FROM users WHERE email=?", (email,)).fetchone():
             raise HTTPException(409,"Bu e-posta zaten kayıtlı")
-        uid=cur.lastrowid; token=make_token()
+        uid=con.insert_id("""INSERT INTO users(email,name,first_name,last_name,pwhash,salt,is_admin,created,last_seen)
+                             VALUES(?,?,?,?,?,?,?,?,?)""",
+                          (email,name,fn,ln,pwh,salt,is_admin,time.time(),time.time()))
+        token=make_token()
         con.execute("INSERT INTO sessions(token,user_id,created) VALUES(?,?,?)",(token,uid,time.time()))
         row=con.execute("SELECT * FROM users WHERE id=?",(uid,)).fetchone()
     log_event(uid,"register")
