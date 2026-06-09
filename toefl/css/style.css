@@ -246,6 +246,9 @@ main{flex:1;max-width:980px;margin:0 auto;width:100%;padding:26px 20px 60px}
 .bd-row{display:flex;gap:10px;padding:9px 11px;border-radius:10px;margin-bottom:7px;border:1px solid var(--line);background:var(--panel)}
 .bd-row.good{border-color:#2a5a45;background:rgba(52,211,153,.07)}
 .bd-row.bad{border-color:#5a2f33;background:rgba(248,113,113,.06)}
+.bd-row.neu{border-color:var(--line);background:var(--panel);opacity:.85}
+.bd-row.neu .bd-lett{color:var(--muted)}
+.bd-tag.ok{background:var(--good);color:#06281c}
 .bd-lett{flex:none;font-weight:800;font-size:13px;width:34px;white-space:nowrap}
 .bd-row.good .bd-lett{color:var(--good)}
 .bd-row.bad .bd-lett{color:var(--bad)}

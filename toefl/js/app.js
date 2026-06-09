@@ -391,28 +391,28 @@ const App = (() => {
     if (!q.breakdown) return "";
     let rows="";
     if (q.type==="mc"){
+      // Boşluk doldurma: doğru şık yeşil, diğerleri kırmızı
       q.options.forEach((o,i)=>{
-        const isAns=i===q.answer, isUser=userAns===i;
-        rows += bdRow(LETTERS[i], o, q.breakdown[i], isAns, isUser, false);
+        rows += bdRow(LETTERS[i], o, q.breakdown[i], i===q.answer?"answer":"wrong", userAns===i);
       });
     } else {
+      // Hata bulma: SADECE hatalı (doğru cevap) yeşil; diğer 3 kısım nötr (gri)
       q.segments.filter(s=>s.choice!==undefined).forEach(s=>{
-        const isErr=s.choice===q.answer, isUser=userAns===s.choice;
-        rows += bdRow(s.choice, s.text, q.breakdown[s.choice], isErr, isUser, true);
+        rows += bdRow(s.choice, s.text, q.breakdown[s.choice], s.choice===q.answer?"answer":"neutral", userAns===s.choice);
       });
     }
-    return `<div class="breakdown"><div class="bd-title">Şık şık açıklama</div>${rows}</div>`;
+    const hint = q.type==="mc" ? "Şık şık açıklama" : "Bölüm bölüm açıklama (yeşil = seçilmesi gereken hatalı kısım)";
+    return `<div class="breakdown"><div class="bd-title">${hint}</div>${rows}</div>`;
   }
-  // err'de hatalı şık kırmızı (mark=true & flagged), diğerleri yeşil.
-  // mc'de doğru şık yeşil, diğerleri kırmızı.
-  function bdRow(letter, text, why, flagged, isUser, isErrType){
-    const good = isErrType ? !flagged : flagged;   // bu şık "doğru/uygun" mu?
-    const cls = good ? "good" : "bad";
-    const mark = good ? "✓" : "✗";
-    const tag = isUser ? `<span class="bd-tag">senin cevabın</span>` : "";
-    return `<div class="bd-row ${cls}">
-      <span class="bd-lett">${mark} ${letter}</span>
-      <div class="bd-body"><b>${esc(text)}</b>${tag}<div class="bd-why">${esc(why||"")}</div></div>
+  function bdRow(letter, text, why, kind, isUser){
+    // kind: answer (yeşil/doğru cevap) · wrong (kırmızı) · neutral (gri, dokunma)
+    const M = { answer:{c:"good",m:"✓"}, wrong:{c:"bad",m:"✗"}, neutral:{c:"neu",m:"•"} };
+    const k = M[kind] || M.neutral;
+    const ansTag = kind==="answer" ? `<span class="bd-tag ok">doğru cevap</span>` : "";
+    const usrTag = isUser ? `<span class="bd-tag">senin cevabın</span>` : "";
+    return `<div class="bd-row ${k.c}">
+      <span class="bd-lett">${k.m} ${letter}</span>
+      <div class="bd-body"><b>${esc(text)}</b>${ansTag}${usrTag}<div class="bd-why">${esc(why||"")}</div></div>
     </div>`;
   }
 
@@ -663,6 +663,12 @@ const App = (() => {
         </div>
       </div>`;
   }
+  // Yeni oturum (kayıt/giriş): yereldeki her şeyi sıfırla — herkes sıfırdan başlar.
+  function resetLocalForNewSession(){
+    localStorage.removeItem(STORE);
+    localStorage.removeItem("toefl_vocab");
+    progress = { skills:{}, wrong:[] };
+  }
   // Tanı testi yapılmış mı? (yerel ya da sunucu)
   function diagnosticDone(){ return !!(progress.diagnostic || progress.diagnosticDone); }
   async function submitAuth(mode){
@@ -676,13 +682,13 @@ const App = (() => {
       const ln=document.getElementById("au-last").value.trim();
       if(!fn){ err.textContent="Ad gerekli."; return; }
       const btn=document.getElementById("au-submit"); btn.disabled=true; btn.textContent="...";
-      try{ await API.register(fn,ln,email,pass); refreshAccountNav();
+      try{ await API.register(fn,ln,email,pass); resetLocalForNewSession(); refreshAccountNav();
            document.body.classList.remove("locked");
-           renderDiagnosticInternal(); }   // kayıt olur olmaz DİREKT tanı testi
+           renderDiagnosticInternal(); }   // kayıt olur olmaz DİREKT tanı testi (sıfırdan)
       catch(e){ err.textContent=e.message||"Hata"; btn.disabled=false; btn.textContent="Kayıt ol"; }
     } else {
       const btn=document.getElementById("au-submit"); btn.disabled=true; btn.textContent="...";
-      try{ await API.login(email,pass); await syncFromServer(); refreshAccountNav();
+      try{ await API.login(email,pass); resetLocalForNewSession(); await syncFromServer(); refreshAccountNav();
            document.body.classList.remove("locked");
            // Tanı testi yapılmadıysa önce onu yaptır, yoksa ana sayfa
            if(diagnosticDone()) go("home"); else renderDiagnosticInternal(); }
