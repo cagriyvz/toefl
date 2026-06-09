@@ -19,8 +19,9 @@ Ortam değişkenleri (opsiyonel):
   AI_MODEL           = varsayılan llama-3.3-70b-versatile
 """
 import os, sqlite3, hashlib, secrets, json, time
+from collections import defaultdict
 from contextlib import closing
-from fastapi import FastAPI, HTTPException, Depends, Header
+from fastapi import FastAPI, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -461,16 +462,19 @@ def explain(b: ExplainIn, user=Depends(current_user)):
          "Doğru cevabın neden doğru, diğer şıkların neden yanlış olduğunu maddeler hâlinde söyle. "
          "Gramer kuralını basitçe hatırlat.")
     try:
-        import httpx
-        r=httpx.post(base+"/chat/completions",
-            headers={"Authorization":"Bearer "+key,"Content-Type":"application/json"},
-            json={"model":model,"temperature":0.3,"max_tokens":500,
-                  "messages":[{"role":"system","content":sys},{"role":"user","content":b.prompt}]},
-            timeout=30)
-        r.raise_for_status()
-        text=r.json()["choices"][0]["message"]["content"].strip()
+        # stdlib (urllib) ile çağrı → ekstra kütüphane (httpx) gerektirmez, her sunucuda çalışır
+        import urllib.request, urllib.error
+        payload=json.dumps({"model":model,"temperature":0.3,"max_tokens":500,
+                  "messages":[{"role":"system","content":sys},{"role":"user","content":b.prompt}]}).encode("utf-8")
+        req=urllib.request.Request(base+"/chat/completions", data=payload, method="POST",
+            headers={"Authorization":"Bearer "+key,"Content-Type":"application/json"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data=json.loads(resp.read().decode("utf-8"))
+        text=data["choices"][0]["message"]["content"].strip()
         log_event(user["id"],"ai_explain",{"len":len(b.prompt)})
         return {"ok":True,"text":text}
+    except urllib.error.HTTPError as e:
+        return {"ok":False,"text":None,"reason":f"AI sağlayıcı hatası ({e.code}). Model adı / API anahtarı doğru mu?"}
     except Exception as e:
         return {"ok":False,"text":None,"reason":f"AI hatası: {e}"}
 
