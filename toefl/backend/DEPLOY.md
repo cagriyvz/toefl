@@ -49,12 +49,11 @@ curl -fsSL https://get.docker.com | sh
 **3) Projeyi çek ve başlat:**
 ```bash
 git clone https://github.com/cagriyvz/lexi-full.git
-cd lexi-full/toefl
-DOMAIN=alanadin.com \
-ADMIN_EMAIL=cagri@gmail.com \
-ADMIN_PASSWORD=C4gr1007 \
-AI_API_KEY=gsk_xxx \
-DB_PASSWORD=guclu-bir-sifre \
+cd lexi-full
+git checkout claude/toefl-study-app-Nh7L1   # uygulamanın olduğu dal
+cd toefl
+cp .env.example .env
+nano .env        # DOMAIN, ADMIN_PASSWORD, DB_PASSWORD, (AI_API_KEY) doldur
 docker compose up -d --build
 ```
 
