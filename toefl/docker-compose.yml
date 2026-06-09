@@ -18,6 +18,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    dns: ["8.8.8.8", "1.1.1.1"]
     environment:
       DATABASE_URL: postgresql://toefl:${DB_PASSWORD:-toeflpass}@db:5432/toefl
       ADMIN_EMAIL: ${ADMIN_EMAIL:-cagri@gmail.com}
@@ -45,6 +46,7 @@ services:
 
   caddy:
     image: caddy:2
+    dns: ["8.8.8.8", "1.1.1.1"]
     ports: ["80:80", "443:443"]
     environment:
       DOMAIN: ${DOMAIN}
