@@ -652,9 +652,11 @@ const App = (() => {
               <label>Soyad<input id="au-last" placeholder="Soyadın" autocomplete="family-name"></label>
             </div>`:""}
             <label>E-posta<input id="au-email" type="email" placeholder="ornek@gmail.com" autocomplete="email"></label>
-            <label>Şifre<input id="au-pass" type="password" placeholder="••••••"
+            <label>Şifre${reg?' <span class="cat">(en az 6 karakter)</span>':''}<input id="au-pass" type="password" placeholder="••••••"
               autocomplete="${reg?'new-password':'current-password'}"
               onkeydown="if(event.key==='Enter')App.submitAuth('${mode}')"></label>
+            ${reg?`<label>Şifre (tekrar)<input id="au-pass2" type="password" placeholder="••••••"
+              onkeydown="if(event.key==='Enter')App.submitAuth('register')"></label>`:''}
             <div class="form-err" id="au-err"></div>
             <button class="btn" id="au-submit" onclick="App.submitAuth('${mode}')">${reg?"Kayıt ol ve başla →":"Giriş yap →"}</button>
             <div class="form-switch">
@@ -682,7 +684,10 @@ const App = (() => {
     if(mode==="register"){
       const fn=document.getElementById("au-first").value.trim();
       const ln=document.getElementById("au-last").value.trim();
+      const pass2=document.getElementById("au-pass2").value;
       if(!fn){ err.textContent="Ad gerekli."; return; }
+      if(pass.length<6){ err.textContent="Şifre en az 6 karakter olmalı."; return; }
+      if(pass!==pass2){ err.textContent="Şifreler aynı değil."; return; }
       const btn=document.getElementById("au-submit"); btn.disabled=true; btn.textContent="...";
       try{ await API.register(fn,ln,email,pass); resetLocalForNewSession(); refreshAccountNav();
            document.body.classList.remove("locked");
@@ -874,6 +879,7 @@ const App = (() => {
         <div class="section-title">📝 Tüm çözümler (süre + tarih)</div><div class="hist">${attempts}</div>
         <div class="section-title">🧾 Etkinlik logları</div><div class="hist">${events}</div>
         <div class="lesson-actions" style="margin-top:18px">
+          <button class="btn sec" onclick="App.adminResetPw(${u.id})">🔑 Şifre sıfırla</button>
           <button class="btn sec danger" onclick="App.adminDelete(${u.id})">🗑️ Kullanıcıyı sil</button>
         </div>`;
     }catch(e){ const el=document.getElementById("adu"); if(el) el.innerHTML=`<p class="empty">Yüklenemedi: ${esc(e.message)}</p>`; }
@@ -885,6 +891,13 @@ const App = (() => {
     try{ const r=await API.adminEditUser(id,fn,ln); msg.style.color="var(--good)"; msg.textContent="✓ Kaydedildi: "+r.name;
          const h=document.getElementById("adu-name"); if(h)h.textContent=r.name; }
     catch(e){ msg.style.color="var(--bad)"; msg.textContent=e.message; }
+  }
+  async function adminResetPw(id){
+    const np=prompt("Yeni şifre (en az 6 karakter):");
+    if(np===null) return;
+    if(np.length<6){ alert("Şifre en az 6 karakter olmalı."); return; }
+    try{ await API.adminResetPassword(id,np); alert("✓ Şifre güncellendi. Kullanıcı yeni şifreyle girebilir."); }
+    catch(e){ alert(e.message); }
   }
   async function adminDelete(id){
     if(!confirm("Bu kullanıcı ve tüm verileri silinsin mi?")) return;
@@ -1142,6 +1155,6 @@ const App = (() => {
   return { go:(r,a)=>go(r,a), answerMC, answerErr, next, prevExam, nextSkill, resetProgress,
            beginDiagnostic:renderDiagnosticInternal, beginExam:startExam, confirmQuit,
            submitAuth, doLogout, aiExplain,
-           flashReveal, flashNext, adminDelete, saveAiSettings, adminEditName,
+           flashReveal, flashNext, adminDelete, saveAiSettings, adminEditName, adminResetPw,
            submitTicket, ticketStatus, ticketDelete };
 })();

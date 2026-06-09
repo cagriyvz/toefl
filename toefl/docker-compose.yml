@@ -27,6 +27,22 @@ services:
     depends_on: [db]
     restart: unless-stopped
 
+  # Otomatik günlük yedek: ./backups klasörüne pg_dump, son 14 yedek tutulur
+  backup:
+    image: postgres:16
+    environment:
+      PGPASSWORD: ${DB_PASSWORD:-toeflpass}
+    volumes:
+      - ./backups:/backups
+    command: >
+      sh -c "while true; do
+        pg_dump -h db -U toefl toefl > /backups/toefl_$$(date +%F_%H%M).sql 2>/backups/last_error.log || true;
+        ls -t /backups/*.sql 2>/dev/null | tail -n +15 | xargs -r rm -f;
+        sleep 86400;
+      done"
+    depends_on: [db]
+    restart: unless-stopped
+
   caddy:
     image: caddy:2
     ports: ["80:80", "443:443"]

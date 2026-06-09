@@ -187,6 +187,18 @@ def log_event(uid, type_, data=None):
         con.execute("INSERT INTO events(user_id,type,data,created) VALUES(?,?,?,?)",
                     (uid, type_, json.dumps(data) if data is not None else None, time.time()))
 
+# Basit hız sınırlama (kaba kuvvet/spam koruması) — bellek içi, IP başına
+_RL = defaultdict(list)
+def client_ip(req: Request):
+    xff = req.headers.get("x-forwarded-for", "")
+    return (xff.split(",")[0].strip() if xff else (req.client.host if req.client else "?"))
+def rate_limit(key, limit, window):
+    now = time.time()
+    arr = [t for t in _RL[key] if now - t < window]
+    if len(arr) >= limit:
+        raise HTTPException(429, "Çok fazla deneme. Lütfen biraz bekleyip tekrar dene.")
+    arr.append(now); _RL[key] = arr
+
 def public_user(row):
     return {"id":row["id"],"email":row["email"],"name":row["name"],
             "firstName":row["first_name"] or "","lastName":row["last_name"] or "",
@@ -214,6 +226,8 @@ class TicketIn(BaseModel):
     message: str
 class TicketUpdateIn(BaseModel):
     status: str
+class PwResetIn(BaseModel):
+    password: str
 
 # ---------------------------------------------------------------- progress
 def build_progress(uid):
@@ -256,10 +270,11 @@ def health():
     return {"ok":True,"service":"toefl-structure","ai": ai,"time":time.time()}
 
 @app.post("/api/register")
-def register(b: RegisterIn):
+def register(b: RegisterIn, request: Request):
+    rate_limit("reg:"+client_ip(request), 50, 3600)   # IP başına saatte 50 (sınıfça kayıt olabilsin)
     email=b.email.strip().lower()
-    if "@" not in email or len(b.password)<4:
-        raise HTTPException(400,"Geçerli e-posta ve en az 4 karakter şifre gerekli")
+    if "@" not in email or len(b.password)<6:
+        raise HTTPException(400,"Geçerli e-posta ve en az 6 karakterli şifre gerekli")
     fn, ln = b.firstName.strip(), b.lastName.strip()
     if not fn: raise HTTPException(400,"Ad gerekli")
     name=(fn+" "+ln).strip()
@@ -278,8 +293,9 @@ def register(b: RegisterIn):
     return {"token":token,"user":public_user(row)}
 
 @app.post("/api/login")
-def login(b: LoginIn):
+def login(b: LoginIn, request: Request):
     email=b.email.strip().lower()
+    rate_limit("login:"+email, 12, 300)   # HESAP başına 5 dk'da 12 deneme (aynı IP'li sınıfı bloklamaz)
     with closing(db()) as con, con:
         row=con.execute("SELECT * FROM users WHERE email=?",(email,)).fetchone()
         if not row or hash_pw(b.password,row["salt"])!=row["pwhash"]:
@@ -326,6 +342,7 @@ def progress(user=Depends(current_user)):
 # ---------------------------------------------------------------- DESTEK / TALEP
 @app.post("/api/ticket")
 def create_ticket(b: TicketIn, user=Depends(current_user)):
+    rate_limit("tk:"+str(user["id"]), 10, 3600)   # kullanıcı başına saatte 10 talep
     msg=(b.message or "").strip()
     if len(msg)<3: raise HTTPException(400,"Mesaj çok kısa")
     with closing(db()) as con, con:
@@ -401,6 +418,19 @@ def admin_user_detail(uid: int, admin=Depends(require_admin)):
             "byMode":[{"mode":r["mode"],"count":r["n"],"seconds":r["secs"],"avgScore":round(r["avg"])} for r in permode],
             "attempts":[dict(a) for a in attempts],
             "events":[{"type":e["type"],"data":e["data"],"created":e["created"]} for e in events]}
+
+@app.post("/api/admin/user/{uid}/password")
+def admin_reset_password(uid: int, b: PwResetIn, admin=Depends(require_admin)):
+    if len(b.password) < 6:
+        raise HTTPException(400, "Şifre en az 6 karakter olmalı")
+    salt = secrets.token_hex(8)
+    with closing(db()) as con, con:
+        if not con.execute("SELECT 1 FROM users WHERE id=?", (uid,)).fetchone():
+            raise HTTPException(404, "Kullanıcı yok")
+        con.execute("UPDATE users SET pwhash=?, salt=? WHERE id=?", (hash_pw(b.password, salt), salt, uid))
+        con.execute("DELETE FROM sessions WHERE user_id=?", (uid,))   # eski oturumları düşür
+    log_event(admin["id"], "admin_reset_pw", {"uid": uid})
+    return {"ok": True}
 
 @app.post("/api/admin/user/{uid}/edit")
 def admin_edit_user(uid: int, b: UserEditIn, admin=Depends(require_admin)):

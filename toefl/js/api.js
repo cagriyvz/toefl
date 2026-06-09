@@ -71,6 +71,7 @@ const API = (() => {
   async function adminGetSettings(){ return call("/api/admin/settings"); }
   async function adminSaveSettings(aiKey,aiModel){ return call("/api/admin/settings",{method:"POST",body:JSON.stringify({aiKey,aiModel})}); }
   async function adminEditUser(id,firstName,lastName){ return call("/api/admin/user/"+id+"/edit",{method:"POST",body:JSON.stringify({firstName,lastName})}); }
+  async function adminResetPassword(id,password){ return call("/api/admin/user/"+id+"/password",{method:"POST",body:JSON.stringify({password})}); }
   async function createTicket(category,message){ return call("/api/ticket",{method:"POST",body:JSON.stringify({category,message})}); }
   async function adminTickets(){ return call("/api/admin/tickets"); }
   async function adminUpdateTicket(id,status){ return call("/api/admin/ticket/"+id,{method:"POST",body:JSON.stringify({status})}); }
@@ -79,7 +80,7 @@ const API = (() => {
   return { setBase, clearBase, base:()=>base, enabled, isOnline, authed, user:()=>user,
            health, register, login, logout, me, saveAttempt, logEvent, leaderboard,
            explain, adminUsers, adminUserDetail, adminStats, adminDeleteUser,
-           adminGetSettings, adminSaveSettings, adminEditUser,
+           adminGetSettings, adminSaveSettings, adminEditUser, adminResetPassword,
            createTicket, adminTickets, adminUpdateTicket, adminDeleteTicket };
 })();
 
