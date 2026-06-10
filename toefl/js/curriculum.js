@@ -21,8 +21,10 @@ const CURRICULUM = {
       focus: "Paralellik (and/or, both…and) ve fiil formları: have+V3, be+Ving/V3, modal+V1." },
     { day: 6, title: "İsimler & Zamirler", skills: [19, 20, 21, 22, 23],
       focus: "Tekil/çoğul, sayılabilen/sayılamayan isimler; özne/nesne zamirleri, iyelik ve referans." },
-    { day: 7, title: "Sıfat & Zarf + Genel Tekrar", skills: [24, 25],
-      focus: "Sıfat mı zarf mı? Linking verb'lerden sonra sıfat. Sonra tam deneme sınavı." }
+    { day: 7, title: "Sıfat & Zarf", skills: [24, 25],
+      focus: "Sıfat mı zarf mı? Linking verb'lerden sonra sıfat." },
+    { day: 8, title: "İleri Konular + Genel Tekrar", skills: [26, 27, 28, 29],
+      focus: "Karşılaştırma, devrik yapı, koşul cümleleri, gerund/infinitive. Sonra tam deneme sınavı." }
   ],
 
   // SKILL'LER --------------------------------------------------------------
@@ -613,6 +615,69 @@ const CURRICULUM = {
             {plain:"The fresh "},{choice:"A",text:"flowers"},{plain:" in the vase "},{choice:"B",text:"smell"},
             {plain:" "},{choice:"C",text:"wonderfully"},{plain:" this "},{choice:"D",text:"morning"},{plain:"."}],
           answer:"C", correction:"'wonderfully' → 'wonderful'. 'smell' burada linking verb, sıfat alır." }
+      ]
+    },
+
+    26: {
+      title: "Karşılaştırma (Comparative & Superlative)",
+      category: "Structure",
+      rule: `<p>İki şeyi karşılaştırırken <b>comparative</b>, üç+ arasında en üstünü belirtirken <b>superlative</b> kullanılır.</p>
+        <div class="ex"><p><b>Kısa sıfat:</b> tall → tall<b>er</b> than · the tall<b>est</b></p>
+        <p><b>Uzun sıfat:</b> expensive → <b>more</b> expensive than · the <b>most</b> expensive</p>
+        <p>This bridge is <b>longer than</b> the old one. · It is the <b>most important</b> test.</p></div>
+        <p>Tuzak: 'more bigger' (çift), 'expensiver' (yanlış), 'as ... than' (yanlış).</p>`,
+      chart: "Kısa sıfat: -er/-est. Uzun sıfat: more/most. 'than' ile comparative, 'the ... in' ile superlative. Çift karşılaştırma (more -er) YANLIŞ.",
+      questions: [
+        { type:"mc", stem:"The new bridge is ___ than the old one.", options:["longer","more long","longest","as long"], answer:0, explain:"Kısa sıfat + -er + than → 'longer'." },
+        { type:"mc", stem:"This is the ___ building in the city.", options:["taller","tallest","most tall","more tall"], answer:1, explain:"'the ... in' → superlatif: 'tallest'." },
+        { type:"mc", stem:"Gold is ___ than silver.", options:["expensiver","more expensive","most expensive","as expensive"], answer:1, explain:"Uzun sıfat + 'more' + than → 'more expensive'." }
+      ]
+    },
+
+    27: {
+      title: "Devrik Yapı (Inversion)",
+      category: "Structure",
+      rule: `<p>Cümle <b>olumsuz/sınırlayıcı bir zarfla</b> başlarsa (Never, Rarely, Seldom, Hardly, Not only, Only…),
+        özne ile yardımcı fiil <b>yer değiştirir</b> (soru sıralaması gibi).</p>
+        <div class="ex"><p><b>Rarely do</b> the students arrive late. (Rarely + do + özne)</p>
+        <p><b>Never have I</b> seen such a thing. · <b>Not only did</b> she win, but she also broke a record.</p></div>
+        <p>Tuzak: olumsuz zarftan sonra normal sıra ('Rarely the students arrive') yanlıştır.</p>`,
+      chart: "Olumsuz zarf (Never/Rarely/Seldom/Hardly/Not only…) başta → yardımcı fiil + özne (devrik). 'Rarely do they …'.",
+      questions: [
+        { type:"mc", stem:"Rarely ___ on weekends.", options:["the workers travel","do the workers travel","the workers do travel","travel the workers"], answer:1, explain:"Olumsuz zarf + devrik: 'do the workers travel'." },
+        { type:"mc", stem:"Never ___ such a beautiful view.", options:["I have seen","have I seen","I saw","seen I have"], answer:1, explain:"Never + yardımcı fiil + özne: 'have I seen'." },
+        { type:"mc", stem:"Seldom ___ late to class.", options:["does she arrive","she arrives","she does arrive","arrives she"], answer:0, explain:"Seldom + 'does' + özne + yalın fiil." }
+      ]
+    },
+
+    28: {
+      title: "Koşul Cümleleri (Conditionals)",
+      category: "Structure",
+      rule: `<p><b>Type 2 (gerçek-dışı şimdi):</b> If + geçmiş (be → <b>were</b>), sonuç: would + V1.<br>
+        <b>Type 3 (geçmişe pişmanlık):</b> If + <b>had</b> + V3, sonuç: would have + V3.</p>
+        <div class="ex"><p>If I <b>were</b> rich, I would travel. (her özneyle 'were')</p>
+        <p>If they <b>had</b> left earlier, they would have caught the train.</p></div>
+        <p>Tuzak: 'if' clause'unda 'would' KULLANILMAZ; 'was' yerine resmi dilde 'were'.</p>`,
+      chart: "Type 2: If + were + … , would + V1. Type 3: If + had + V3, would have + V3. 'if' clause'unda would olmaz.",
+      questions: [
+        { type:"mc", stem:"If she ___ the manager, she would change the rules.", options:["was","were","is","be"], answer:1, explain:"Gerçek-dışı koşul → 'were' (her özneyle)." },
+        { type:"mc", stem:"If they ___ studied harder, they would have passed.", options:["have","had","has","would have"], answer:1, explain:"Type 3: If + had + V3 → 'had studied'." },
+        { type:"mc", stem:"If I ___ you, I would accept the offer.", options:["am","was","were","be"], answer:2, explain:"'If I were you' kalıbı." }
+      ]
+    },
+
+    29: {
+      title: "Gerund vs Infinitive",
+      category: "Structure",
+      rule: `<p>Bazı fiillerden sonra <b>gerund (-ing)</b>, bazılarından sonra <b>infinitive (to + fiil)</b> gelir.</p>
+        <div class="ex"><p><b>-ing alanlar:</b> enjoy, avoid, finish, consider, suggest, practice, deny, recommend, miss, quit</p>
+        <p><b>to + fiil alanlar:</b> want, decide, hope, plan, agree, refuse, promise, learn, manage, offer, expect</p>
+        <p>She <b>enjoys reading</b>. · He <b>decided to leave</b>.</p></div>`,
+      chart: "enjoy/avoid/finish/consider/suggest… + -ing. want/decide/hope/plan/agree… + to+fiil.",
+      questions: [
+        { type:"mc", stem:"She enjoys ___ to classical music.", options:["to listen","listening","listen","listened"], answer:1, explain:"'enjoy' + gerund → 'listening'." },
+        { type:"mc", stem:"They decided ___ the project early.", options:["finishing","to finish","finish","finished"], answer:1, explain:"'decide' + mastar → 'to finish'." },
+        { type:"mc", stem:"He avoided ___ about the problem.", options:["to talk","talking","talk","talks"], answer:1, explain:"'avoid' + gerund → 'talking'." }
       ]
     }
   }

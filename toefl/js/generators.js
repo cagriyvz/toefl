@@ -503,6 +503,115 @@ const GEN = (() => {
     ], `'${p.adv}' → '${p.adj}'. Linking verb'lerden (${lv}) sonra sıfat kullanılır.`);
   };
 
+  // Skill 26 — Karşılaştırma (Comparative & Superlative)
+  const CMP_S = [
+    {a:"big",c:"bigger",s:"biggest"},{a:"long",c:"longer",s:"longest"},{a:"small",c:"smaller",s:"smallest"},
+    {a:"fast",c:"faster",s:"fastest"},{a:"old",c:"older",s:"oldest"},{a:"high",c:"higher",s:"highest"},
+    {a:"cheap",c:"cheaper",s:"cheapest"},{a:"strong",c:"stronger",s:"strongest"},{a:"warm",c:"warmer",s:"warmest"},
+    {a:"hard",c:"harder",s:"hardest"},{a:"deep",c:"deeper",s:"deepest"},{a:"tall",c:"taller",s:"tallest"},
+    {a:"short",c:"shorter",s:"shortest"},{a:"light",c:"lighter",s:"lightest"}];
+  const CMP_L = ["expensive","important","difficult","popular","efficient","useful","valuable","modern","famous","reliable"];
+  G[26] = () => {
+    const subj=rnd(["The new model","This bridge","The second test","Her latest book","The express train",
+      "His new car","The summer course","The modern wing","This laptop","The northern route"]);
+    if (Math.random()<0.6){ // comparative (… than …)
+      const obj=rnd(["the old one","the previous version","the first one","the others","last year's model","the rest"]);
+      if (Math.random()<0.5){ const w=rnd(CMP_S);
+        return mc(26, `${subj} is ___ than ${obj}.`,
+          {t:w.c, why:"Kısa sıfat + -er, ardından 'than' (comparative)."},
+          [{t:"more "+w.a, why:"Çift karşılaştırma; kısa sıfatta sadece -er gelir, 'more' eklenmez."},
+           {t:w.s, why:"Superlatif (en); 'than' ile karşılaştırmada -er gerekir."},
+           {t:"as "+w.a, why:"'as ... as' yapısı; 'than' ile birlikte kullanılmaz."}],
+          `'than' ile karşılaştırma → "${w.c}".`);
+      } else { const a=rnd(CMP_L);
+        return mc(26, `${subj} is ___ than ${obj}.`,
+          {t:"more "+a, why:"Uzun sıfat: 'more' + sıfat, ardından 'than'."},
+          [{t:a+"er", why:"Uzun sıfata -er eklenmez; 'more' gelir."},
+           {t:"most "+a, why:"Superlatif; karşılaştırmada 'more ... than' gerekir."},
+           {t:"as "+a, why:"'as ... as' yapısı; 'than' ile kullanılmaz."}],
+          `Uzun sıfat + 'than' → "more ${a}".`);
+      }
+    } else { // superlative (the … in …)
+      const place=rnd(["in the city","in the series","in the region","of all","in the museum","on the market"]);
+      if (Math.random()<0.5){ const w=rnd(CMP_S);
+        return mc(26, `It is the ___ ${place}.`,
+          {t:w.s, why:"Kısa sıfat superlatifi: -est, başında 'the'."},
+          [{t:w.c, why:"Comparative (-er); 'the ... in' yapısında superlatif gerekir."},
+           {t:"most "+w.a, why:"Kısa sıfatta 'most' kullanılmaz; -est gelir."},
+           {t:"more "+w.a, why:"Comparative biçimi; superlatif gerekiyordu."}],
+          `'the ... ${place}' → superlatif "${w.s}".`);
+      } else { const a=rnd(CMP_L);
+        return mc(26, `It is the ___ ${place}.`,
+          {t:"most "+a, why:"Uzun sıfat superlatifi: 'most' + sıfat."},
+          [{t:a+"est", why:"Uzun sıfata -est eklenmez; 'most' gelir."},
+           {t:"more "+a, why:"Comparative; superlatif gerekiyordu."},
+           {t:"the most "+a+"est", why:"Çift superlatif; sadece 'most '+sıfat yeterli."}],
+          `Uzun sıfat superlatifi → "most ${a}".`);
+      }
+    }
+  };
+
+  // Skill 27 — Devrik yapı (Inversion: olumsuz zarf + yardımcı fiil + özne)
+  G[27] = () => {
+    const neg=rnd(["Rarely","Seldom","Never","Hardly ever","Not often","Only rarely"]);
+    const subj=rnd(["the students","the workers","the players","the guests","the members","the visitors","the engineers","the doctors"]);
+    const vb=rnd(["arrive late","complain openly","agree at first","travel abroad","finish early","respond quickly","work on weekends","make mistakes"]);
+    return mc(27, `${neg} ___ ${vb}.`,
+      {t:`do ${subj}`, why:"Olumsuz zarfla başlayan cümlede devrik yapı: yardımcı fiil (do) + özne."},
+      [{t:`${subj}`, why:"Devrik yapı yok; olumsuz zarftan sonra yardımcı fiil öne gelmeli."},
+       {t:`${subj} do`, why:"Sıralama yanlış; 'do' özneden ÖNCE gelmeli."},
+       {t:`does ${subj}`, why:`Özne çoğul (${subj}) → 'do', 'does' değil.`}],
+      `Olumsuz zarf (${neg}) + devrik yapı → "do ${subj}".`);
+  };
+
+  // Skill 28 — Koşul cümleleri (Conditionals: if + were/had)
+  G[28] = () => {
+    if (Math.random()<0.5){ // type 2: if + were
+      const s=rnd(["I","she","he","the manager","the city","your plan"]);
+      const comp=rnd(["the director","in charge","larger","ready on time","more flexible","responsible for it"]);
+      const res=rnd(["things would change","we would start now","it would be easier","they would agree","the team would benefit"]);
+      return mc(28, `If ${s} ___ ${comp}, ${res}.`,
+        {t:"were", why:"Gerçek dışı (type 2) koşulda 'be' fiili her özneyle 'were' olur."},
+        [{t:"was", why:"Resmi koşul cümlesinde gerçek-dışı için 'were' tercih edilir (was değil)."},
+         {t:"is", why:"Şimdiki zaman; gerçek-dışı koşulda geçmiş biçim ('were') gerekir."},
+         {t:"be", why:"Çekimsiz; 'if' clause'unda 'were' gerekir."}],
+        `Gerçek-dışı koşul → "If ${s} were ...".`);
+    } else { // type 3: if + had + V3
+      const s=rnd(["they","we","she","the team","the company","the students"]);
+      const v=rnd(IRR);
+      const res=rnd(["they would have succeeded","we would have caught it","the result would have changed","it would have worked"]);
+      return mc(28, `If ${s} ___ ${v.pp} it earlier, ${res}.`,
+        {t:"had", why:"Geçmişe yönelik gerçek-dışı koşul (type 3): if + had + V3."},
+        [{t:"have", why:"'if' clause'unda 'had' gerekir (have değil)."},
+         {t:"would have", why:"'would have' sonuç clause'unda olur, 'if' clause'unda değil."},
+         {t:"has", why:"type 3 koşulda 'had' + V3 gerekir."}],
+        `Geçmiş gerçek-dışı koşul → "If ${s} had ${v.pp} ...".`);
+    }
+  };
+
+  // Skill 29 — Gerund vs Infinitive
+  const GER_V = ["enjoy","avoid","finish","consider","suggest","practice","deny","recommend","miss","quit","admit"];
+  const INF_V = ["want","decide","hope","plan","agree","refuse","promise","learn","manage","offer","expect"];
+  G[29] = () => {
+    const s=rnd(["She","He","The student","The manager","The team","Our teacher","My brother"]);
+    const v=rnd(V);
+    if (Math.random()<0.5){ const gv=rnd(GER_V);
+      return mc(29, `${s} ${gv}s ___ ${rnd(OBJ)}.`,
+        {t:v.ing, why:`'${gv}' fiilinden sonra gerund (-ing) gelir.`},
+        [{t:"to "+v.b, why:`'${gv}' mastar (to+fiil) almaz; -ing alır.`},
+         {t:v.b, why:"Yalın fiil; bu fiilden sonra -ing gerekir."},
+         {t:v.ed, why:"Geçmiş biçim; burada gerund (-ing) gerekir."}],
+        `'${gv}' + -ing → "${v.ing}".`);
+    } else { const iv=rnd(INF_V);
+      return mc(29, `${s} ${iv}s ___ ${rnd(OBJ)}.`,
+        {t:"to "+v.b, why:`'${iv}' fiilinden sonra mastar (to + fiil) gelir.`},
+        [{t:v.ing, why:`'${iv}' gerund (-ing) almaz; mastar alır.`},
+         {t:v.b, why:"Yalın fiil; bu fiilden sonra 'to + fiil' gerekir."},
+         {t:v.ed, why:"Geçmiş biçim; burada mastar (to + fiil) gerekir."}],
+        `'${iv}' + to + fiil → "to ${v.b}".`);
+    }
+  };
+
   // ---- dışa açılan API ---------------------------------------------------
   // Soruyu CÜMLE bazında tanımlayan anahtar (şık sırası değil, asıl cümle)
   function qKey(q){
@@ -535,11 +644,11 @@ const GEN = (() => {
   }
   // Karışık sınav seti: 15 Structure + 25 Written, hepsi farklı cümle
   function examSet(){
-    return [...uniqueFrom([1,2,3,4,5,6,7,8,9,10],15),
+    return [...uniqueFrom([1,2,3,4,5,6,7,8,9,10,26,27,28,29],15),
             ...uniqueFrom([11,12,13,14,15,16,17,18,19,20,21,22,23,24,25],25)];
   }
   function diagnosticSet(n){
-    const all=[]; for(let k=1;k<=25;k++) all.push(k);
+    const all=Object.keys(G).map(Number);
     return shuffle(all).slice(0,n).map(k=>G[k]());
   }
   function has(skill){ return !!G[skill]; }
