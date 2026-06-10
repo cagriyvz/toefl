@@ -497,7 +497,9 @@ def explain(b: ExplainIn, user=Depends(current_user)):
         payload=json.dumps({"model":model,"temperature":0.3,"max_tokens":500,
                   "messages":[{"role":"system","content":sys},{"role":"user","content":b.prompt}]}).encode("utf-8")
         req=urllib.request.Request(base+"/chat/completions", data=payload, method="POST",
-            headers={"Authorization":"Bearer "+key,"Content-Type":"application/json"})
+            headers={"Authorization":"Bearer "+key,"Content-Type":"application/json",
+                     "User-Agent":"Mozilla/5.0 (compatible; TOEFL-App/1.0; +https://syneducation.com.tr)",
+                     "Accept":"application/json"})
         with urllib.request.urlopen(req, timeout=30) as resp:
             data=json.loads(resp.read().decode("utf-8"))
         text=data["choices"][0]["message"]["content"].strip()
