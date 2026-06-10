@@ -213,15 +213,37 @@ const App = (() => {
   // ======================================================================
   let Q = null;
 
+  // Bir sorunun ilk kelimesi (cümle başı) — kümelenmeyi önlemek için
+  function firstWord(q){
+    const s = q.type==="mc" ? q.stem
+            : q.segments.map(x=>x.plain!==undefined?x.plain:x.text).join(" ");
+    const m=(s||"").trim().toLowerCase().match(/[a-zçğıöşü']+/);
+    return m?m[0]:"";
+  }
+  // Soruları, ARDA ARDA aynı kelimeyle başlamayacak şekilde sırala (4-5 "The..." engellenir)
+  function spreadOut(list){
+    const arr=shuffle(list.slice()), out=[];
+    while(arr.length){
+      let idx=0;
+      if(out.length){
+        const prev=firstWord(out[out.length-1]);
+        const j=arr.findIndex(q=>firstWord(q)!==prev);
+        if(j>=0) idx=j;
+      }
+      out.push(arr.splice(idx,1)[0]);
+    }
+    return out;
+  }
+
   const PRACTICE_N = 20;   // her skill quizinde taze soru sayısı
   function startQuiz(skillId){
-    Q = { mode:"practice", skillId, questions:genSkill(skillId, PRACTICE_N),
+    Q = { mode:"practice", skillId, questions:spreadOut(genSkill(skillId, PRACTICE_N)),
           idx:0, correct:0, answers:[], startedAt:Date.now() };
     API.logEvent("start_practice", {skill:skillId});
     paintQuestion();
   }
   function renderDiagnosticInternal(){
-    Q = { mode:"diagnostic", questions:genDiagnostic(20),
+    Q = { mode:"diagnostic", questions:spreadOut(genDiagnostic(20)),
           idx:0, correct:0, answers:[], wrongSkills:{}, startedAt:Date.now() };
     paintQuestion();
   }
@@ -232,7 +254,7 @@ const App = (() => {
     paintQuestion();
   }
   function startExam(){
-    const questions = genExam();   // 40 TAZE soru (15 Structure + 25 Written), her seferinde farklı
+    const questions = spreadOut(genExam());   // 40 TAZE soru (15 Structure + 25 Written), her seferinde farklı
     Q = { mode:"exam", questions, idx:0, correct:0, answers:new Array(questions.length).fill(null),
           examEnd: Date.now() + 25*60*1000, startedAt:Date.now() };
     API.logEvent("start_exam", {});
@@ -951,7 +973,7 @@ const App = (() => {
   }
   function startBookQuiz(){
     if(!HAS_BOOK){ return go("home"); }
-    Q={ mode:"book", questions:BOOK.questions.map(q=>Object.assign({},q,{_id:"b"+Math.random().toString(36).slice(2)})),
+    Q={ mode:"book", questions:spreadOut(BOOK.questions.map(q=>Object.assign({},q,{_id:"b"+Math.random().toString(36).slice(2)}))),
         idx:0, correct:0, answers:[], startedAt:Date.now() };
     API.logEvent("start_book",{});
     paintQuestion();

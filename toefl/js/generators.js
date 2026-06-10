@@ -147,7 +147,9 @@ const GEN = (() => {
   // Skill 3 — Present participle (sıfat vs fiil)
   G[3] = () => {
     const v=rnd(V), s=rnd(SUBJ_P), p=rnd(PLACE), o=rnd(OBJ);
-    return mc(3, `The team ___ in ${p} ${v.s} ${o} efficiently.`,
+    const bare=s.replace(/^the /,"");
+    const subj=rnd([cap(s), "Several "+bare, "Many "+bare, cap(bare), "Most "+bare]);
+    return mc(3, `${subj} ___ in ${p} ${v.s} ${o} efficiently.`,
       {t:rnd(["working","operating","meeting"]), why:"Participle sıfat. Asıl fiil ("+v.s+") zaten var; özneyi niteleyen -ing biçimi doğru."},
       [{t:"is "+rnd(["working","operating"]), why:"Fazladan fiil. Cümlede zaten asıl fiil var, ikinci fiil olmaz."},
        {t:"they "+rnd(["work","operate"]), why:"Fazladan özne+fiil; bağlaç olmadan ikinci clause kurulamaz."},
@@ -165,7 +167,8 @@ const GEN = (() => {
     const tail=rnd(["were finally published","were widely praised","became a new standard",
       "were later revised","received an award","were quickly approved","were carefully archived",
       "were soon forgotten","drew great interest","were openly criticized"]);
-    return mc(4, `The ${s} ___ by ${agent} ${tail}.`,
+    const subj=rnd([`The ${s}`, `Several ${s}`, `Many ${s}`, cap(s), `Most ${s}`, `All ${s}`]);
+    return mc(4, `${subj} ___ by ${agent} ${tail}.`,
       {t:v.ed, why:"Past participle (pasif sıfat). Cümlenin asıl fiili zaten var; özneyi niteleyen V3 doğru."},
       [{t:"were "+v.ed, why:"Fazladan fiil. Cümlede zaten asıl fiil var, ikinci fiil olmaz."},
        {t:v.ing, why:"Etken -ing; anlam pasif ('by ...'), V3 gerekir."},
