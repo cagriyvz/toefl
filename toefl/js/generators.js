@@ -53,14 +53,24 @@ const GEN = (() => {
     {b:"know",  pp:"known",  past:"knew"},
     {b:"throw", pp:"thrown", past:"threw"}
   ];
-  const SUBJ_S = ["the scientist","the teacher","the engineer","the manager","the artist",
-    "the author","the researcher","the technician","the architect","the editor","the inspector","the designer"];
-  const SUBJ_P = ["the scientists","the teachers","the engineers","the workers","the students",
-    "the researchers","the technicians","the editors","the doctors","the farmers","the inspectors","the designers"];
-  const OBJ = ["the project","the report","the experiment","the design","the proposal",
-    "the equipment","the program","the survey","the documents","the system","the device","the prototype"];
-  const PLACE = ["the laboratory","the office","the factory","the university","the museum",
-    "the library","the hospital","the studio","the warehouse","the institute"];
+  const SUBJ_S = ["the scientist","the teacher","the engineer","the manager","the artist","the author",
+    "the researcher","the technician","the architect","the editor","the inspector","the designer",
+    "the biologist","the journalist","the historian","the surgeon","the pilot","the lawyer","the chef",
+    "the photographer","the curator","the geologist","the astronomer","the nurse","the analyst",
+    "the director","the professor","the carpenter","the electrician","the translator","the coach"];
+  const SUBJ_P = ["the scientists","the teachers","the engineers","the workers","the students","the researchers",
+    "the technicians","the editors","the doctors","the farmers","the inspectors","the designers",
+    "the biologists","the journalists","the historians","the surgeons","the pilots","the lawyers","the chefs",
+    "the photographers","the curators","the geologists","the astronomers","the nurses","the analysts",
+    "the directors","the professors","the volunteers","the climbers","the divers","the sailors"];
+  const OBJ = ["the project","the report","the experiment","the design","the proposal","the equipment",
+    "the program","the survey","the documents","the system","the device","the prototype","the vaccine",
+    "the bridge","the software","the engine","the telescope","the highway","the curriculum","the model",
+    "the database","the campaign","the algorithm","the exhibit","the recipe","the satellite","the sculpture",
+    "the festival","the textbook","the garden"];
+  const PLACE = ["the laboratory","the office","the factory","the university","the museum","the library",
+    "the hospital","the studio","the warehouse","the institute","the harbor","the campus","the valley",
+    "the capital","the market","the station","the clinic","the observatory","the gallery","the workshop"];
   const TIME = ["Every year,","In recent decades,","During the study,","Throughout the project,",
     "In the past century,","Each season,","Over many years,","In the modern era,"];
   const ADJ = ["complex","detailed","modern","accurate","practical","efficient","original","valuable"];
@@ -165,24 +175,34 @@ const GEN = (() => {
 
   // Skill 5 — Coordinate bağlaçlar (geniş, tutarlı cümle havuzları)
   const C5 = {
-    so:  { rel:"sonuç (sebep→sonuç)", a:["It started to rain","The road was icy","The battery died",
-            "The alarm went off","The flight was delayed","The printer broke down","The file was too large",
-            "The store was closed","The power went out","The soup was cold","The book was sold out","Traffic was heavy"],
-           b:["we stayed inside","they drove slowly","the phone shut down","everyone woke up",
-            "the trip was postponed","they wrote by hand","it would not upload","she went somewhere else",
-            "the lights went off","he heated it again","she ordered it online","we left early"] },
-    but: { rel:"zıtlık", a:["The test was hard","The room was small","The plan looked good","The car was old",
-            "The movie was long","The hotel was cheap","The task seemed simple","The weather was cold"],
-           b:["everyone passed","it felt cozy","it never worked","it ran perfectly","it stayed interesting",
-            "it was very clean","it took all day","the sea was warm"] },
-    and: { rel:"ekleme", a:["The sun was shining","The museum opened early","The team trained hard",
-            "The garden was quiet","The bakery smelled great","The lecture was clear","The river was calm"],
-           b:["the sky was blue","the crowds arrived","they won the match","the birds were singing",
-            "the coffee was fresh","the notes were useful","the boats drifted by"] },
-    or:  { rel:"seçenek", a:["We can take the bus","You may pay now","They can stay here","We could fly",
-            "You can call her","We can start today","You may write it"],
-           b:["we can walk","you may pay later","they can come with us","we could drive",
-            "you can send an email","we can wait until Monday","you may type it"] },
+    so:  { rel:"sonuç (sebep→sonuç)",
+           a:["It started to rain","The road was icy","The power went out","She missed the bus",
+            "The store ran out of bread","The printer jammed","The flight was cancelled","His phone died",
+            "The river flooded the path","Nobody answered the door","The wifi went down","The match was rained off",
+            "A storm hit the coast","The elevator was broken","Demand grew quickly"],
+           b:["the game was postponed","we took a taxi","they lit candles","she walked to work",
+            "he baked his own","the report was delayed","the trip was rescheduled","he borrowed a charger",
+            "the village was evacuated","we left a note","the class moved online","the players went home",
+            "the ferries stopped running","we used the stairs","the factory added a shift"] },
+    but: { rel:"zıtlık",
+           a:["The team practiced for months","The recipe looked complicated","Tickets were expensive",
+            "The hike was long","She studied all night","The old engine was rusty","The reviews were poor",
+            "The room was tiny","He spoke very quietly","The bridge looked fragile"],
+           b:["they still lost the final","it was actually easy","the concert sold out fast",
+            "the view was worth it","she failed the quiz","it still ran smoothly","the film became a hit",
+            "it felt surprisingly cozy","everyone heard him clearly","it carried heavy trucks"] },
+    and: { rel:"ekleme",
+           a:["The sun rose over the hills","The orchestra began to play","Visitors filled the gallery",
+            "The bakery opened at dawn","The children built a sandcastle","Snow covered the rooftops",
+            "The market grew busy","The garden bloomed in spring","The lecture started on time"],
+           b:["the valley glowed with light","the audience fell silent","the gift shop stayed busy",
+            "the smell of bread spread","the waves washed it away","the streets turned white",
+            "prices began to climb","bees moved between the flowers","the hall was completely full"] },
+    or:  { rel:"seçenek",
+           a:["We can hike the trail","You may submit it online","They can stay another night","We could cook at home",
+            "You can pay by card","We can meet on Monday","Students may work in pairs","You can take the train"],
+           b:["we can rent bikes","you may mail a printed copy","they can catch the early train","we could order takeout",
+            "you can pay with cash","we can wait until Friday","they may work alone","you can drive instead"] },
   };
   G[5] = () => {
     const conj=rnd(["so","but","and","or"]);
