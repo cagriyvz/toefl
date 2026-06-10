@@ -23,8 +23,10 @@ const CURRICULUM = {
       focus: "Tekil/çoğul, sayılabilen/sayılamayan isimler; özne/nesne zamirleri, iyelik ve referans." },
     { day: 7, title: "Sıfat & Zarf", skills: [24, 25],
       focus: "Sıfat mı zarf mı? Linking verb'lerden sonra sıfat." },
-    { day: 8, title: "İleri Konular + Genel Tekrar", skills: [26, 27, 28, 29, 30],
-      focus: "Karşılaştırma, devrik yapı, koşul cümleleri, gerund/infinitive, articles. Sonra tam deneme sınavı." }
+    { day: 8, title: "İleri Konular I", skills: [26, 27, 28, 29, 30],
+      focus: "Karşılaştırma, devrik yapı, koşul cümleleri, gerund/infinitive, articles." },
+    { day: 9, title: "İleri Konular II + Genel Tekrar", skills: [31, 32, 33, 34, 35, 36],
+      focus: "Reduced clauses, redundancy, word form, prepositions, causatives, tense uyumu. Sonra tam deneme." }
   ],
 
   // SKILL'LER --------------------------------------------------------------
@@ -694,6 +696,92 @@ const CURRICULUM = {
         { type:"mc", stem:"She waited for ___ hour.", options:["a","an","the","—"], answer:1, explain:"'hour' sessiz h → ünlü ses → 'an hour'." },
         { type:"mc", stem:"He is studying at ___ university.", options:["a","an","the","—"], answer:0, explain:"'university' /juː/ ünsüz ses → 'a university'." },
         { type:"mc", stem:"___ sun is the center of our solar system.", options:["A","An","The","—"], answer:2, explain:"Tek/belirli → 'The sun'." }
+      ]
+    },
+
+    31: {
+      title: "Reduced Clauses (Kısaltılmış Cümlecikler)",
+      category: "Structure",
+      rule: `<p>Bir adjective clause'ta <b>bağlaç (who/which/that) + be</b> düşürülerek cümle kısaltılır.</p>
+        <div class="ex"><p>The man <b>who is running</b> = The man <b>running</b> (etken → -ing)</p>
+        <p>The book <b>that was written</b> in 1925 = The book <b>written</b> in 1925 (edilgen → V3)</p></div>
+        <p>Etken eylemde <b>-ing</b>, edilgen eylemde <b>V3</b> kalır. Çekimli fiil (was/is) düşer.</p>`,
+      chart: "who/which/that + be DÜŞER. Etken → -ing, edilgen → V3. 'The car damaged…', 'The man running…'.",
+      questions: [
+        { type:"mc", stem:"The novel, ___ in 1925, remains popular.", options:["writing","written","was written","which writing"], answer:1, explain:"Edilgen kısaltma → V3: 'written'." },
+        { type:"mc", stem:"The committee, ___ the proposal, asked for changes.", options:["reviewed","reviewing","who reviewing","reviews"], answer:1, explain:"Etken kısaltma → -ing: 'reviewing'." },
+        { type:"mc", stem:"The vaccine ___ in 2020 saved many lives.", options:["developing","was developed","developed","which developed"], answer:2, explain:"Edilgen kısaltma → V3: 'developed'." }
+      ]
+    },
+
+    32: {
+      title: "Redundancy / Wordiness (Gereksiz Tekrar)",
+      category: "Written Expression",
+      rule: `<p>TOEFL'da bir kelime <b>anlamı zaten içerdiği</b> için gereksizdir; o kelime çıkarılmalıdır.</p>
+        <div class="ex"><p><s>return back</s> → return · <s>new innovation</s> → innovation · <s>repeat again</s> → repeat</p>
+        <p><s>final outcome</s> → outcome · <s>past history</s> → history · <s>join together</s> → join</p></div>`,
+      chart: "Gereksiz tekrarı bul: return back, new innovation, repeat again, final outcome, past history, join together…",
+      questions: [
+        { type:"err", segments:[{plain:"The team decided to "},{choice:"A",text:"return"},{plain:" "},{choice:"B",text:"back"},{plain:" to the "},{choice:"C",text:"original"},{plain:" "},{choice:"D",text:"plan"},{plain:"."}], answer:"B", correction:"'back' gereksiz; 'return' zaten 'geri dönmek' demek." },
+        { type:"err", segments:[{plain:"They introduced a "},{choice:"A",text:"new"},{plain:" "},{choice:"B",text:"innovation"},{plain:" that "},{choice:"C",text:"changed"},{plain:" the "},{choice:"D",text:"market"},{plain:"."}], answer:"A", correction:"'new' gereksiz; 'innovation' zaten yeni demek." },
+        { type:"err", segments:[{plain:"The students had to "},{choice:"A",text:"repeat"},{plain:" "},{choice:"B",text:"again"},{plain:" the "},{choice:"C",text:"same"},{plain:" "},{choice:"D",text:"steps"},{plain:"."}], answer:"B", correction:"'again' gereksiz; 'repeat' zaten tekrar demek." }
+      ]
+    },
+
+    33: {
+      title: "Word Form (Sözcük Türü)",
+      category: "Structure",
+      rule: `<p>Aynı kökün farklı biçimleri vardır; boşluğun istediği <b>türü</b> seçmelisin: isim / fiil / sıfat / zarf.</p>
+        <div class="ex"><p>success (isim) · succeed (fiil) · successful (sıfat) · successfully (zarf)</p>
+        <p>a <b>creative</b> method (sıfat) · worked <b>creatively</b> (zarf) · great <b>creation</b> (isim)</p></div>`,
+      chart: "İsim (-tion/-ity/-ness), fiil, sıfat (-ive/-ful/-al), zarf (-ly). Boşluğun türünü cümle belirler.",
+      questions: [
+        { type:"mc", stem:"It was a ___ approach.", options:["create","creation","creative","creatively"], answer:2, explain:"İsmi niteleyen sıfat: 'creative'." },
+        { type:"mc", stem:"The team handled the project ___.", options:["efficient","efficiency","efficiently","efficiencies"], answer:2, explain:"Fiili niteleyen zarf: 'efficiently'." },
+        { type:"mc", stem:"They focused on the ___ of the plan.", options:["produce","production","productive","productively"], answer:1, explain:"'the ... of' → isim: 'production'." }
+      ]
+    },
+
+    34: {
+      title: "Prepositions / Idiomatic Kalıplar",
+      category: "Structure",
+      rule: `<p>Bazı fiil ve sıfatlar belirli edatlarla kalıplaşmıştır; ezberlenmeleri gerekir.</p>
+        <div class="ex"><p>interested <b>in</b> · depend <b>on</b> · good <b>at</b> · proud <b>of</b> · responsible <b>for</b></p>
+        <p>different <b>from</b> · similar <b>to</b> · famous <b>for</b> · consist <b>of</b> · focus <b>on</b></p></div>`,
+      chart: "Kalıp edatlar: interested in, depend on, good at, afraid of, responsible for, different from, similar to…",
+      questions: [
+        { type:"mc", stem:"She is interested ___ modern art.", options:["on","in","at","for"], answer:1, explain:"'interested in' kalıbı." },
+        { type:"mc", stem:"The result depends ___ the method.", options:["on","in","of","to"], answer:0, explain:"'depend on' kalıbı." },
+        { type:"mc", stem:"This copy is different ___ the original.", options:["of","to","from","at"], answer:2, explain:"'different from' kalıbı." }
+      ]
+    },
+
+    35: {
+      title: "Causatives (make / have / let + yalın fiil)",
+      category: "Structure",
+      rule: `<p><b>make, have, let</b> + nesne + <b>yalın fiil</b> (to almadan). Birine bir şey yaptırma/izin verme.</p>
+        <div class="ex"><p>The teacher <b>made</b> the students <b>rewrite</b> the essay.</p>
+        <p>Her boss <b>had</b> her <b>finish</b> the report. · They <b>let</b> him <b>go</b>.</p></div>
+        <p>Tuzak: 'made them to go' (✗) → 'made them go'. (Not: 'get' farklıdır: get + to + fiil.)</p>`,
+      chart: "make/have/let + nesne + YALIN fiil (to yok). 'made him leave', 'had her sign', 'let them play'.",
+      questions: [
+        { type:"mc", stem:"The teacher made the students ___ the essay.", options:["to rewrite","rewrite","rewriting","rewrote"], answer:1, explain:"make + nesne + yalın fiil: 'rewrite'." },
+        { type:"mc", stem:"Her boss had her ___ the report early.", options:["finish","to finish","finishing","finished"], answer:0, explain:"have + nesne + yalın fiil: 'finish'." },
+        { type:"mc", stem:"They let the children ___ in the garden.", options:["to play","playing","play","played"], answer:2, explain:"let + nesne + yalın fiil: 'play'." }
+      ]
+    },
+
+    36: {
+      title: "Tense Consistency (Zaman Uyumu)",
+      category: "Written Expression",
+      rule: `<p>Bir cümledeki fiiller <b>aynı zaman</b> çerçevesinde tutarlı olmalı; biri uyumsuzsa hatadır.</p>
+        <div class="ex"><p>Yesterday she <b>went</b> to the store and <b>bought</b> milk. (ikisi de geçmiş ✓)</p>
+        <p>✗ Yesterday she went … and <b>buys</b> … → <b>bought</b></p></div>`,
+      chart: "Cümledeki fiiller aynı zamanda olmalı. Geçmiş bağlamda (yesterday/last year) tüm fiiller geçmiş.",
+      questions: [
+        { type:"err", segments:[{plain:"Yesterday, the manager "},{choice:"A",text:"reviewed"},{plain:" the report, "},{choice:"B",text:"signs"},{plain:" it, and "},{choice:"C",text:"sent"},{plain:" the "},{choice:"D",text:"copy"},{plain:"."}], answer:"B", correction:"'signs' → 'signed' (cümle geçmiş zaman)." },
+        { type:"err", segments:[{plain:"Last year the company "},{choice:"A",text:"launched"},{plain:" a product, "},{choice:"B",text:"trained"},{plain:" the staff, and "},{choice:"C",text:"expands"},{plain:" into new "},{choice:"D",text:"markets"},{plain:"."}], answer:"C", correction:"'expands' → 'expanded' (geçmiş bağlam)." },
+        { type:"err", segments:[{plain:"In 1990 the team "},{choice:"A",text:"built"},{plain:" the bridge and "},{choice:"B",text:"opens"},{plain:" it to "},{choice:"C",text:"public"},{plain:" "},{choice:"D",text:"traffic"},{plain:"."}], answer:"B", correction:"'opens' → 'opened' (geçmiş zaman)." }
       ]
     }
   }

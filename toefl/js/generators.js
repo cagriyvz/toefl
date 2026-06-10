@@ -645,6 +645,143 @@ const GEN = (() => {
     }
   };
 
+  // ortak: participle formlu fiiller (reduced clauses & passive için)
+  const VPP = [
+    {b:"publish",ing:"publishing",pp:"published"},{b:"design",ing:"designing",pp:"designed"},
+    {b:"build",ing:"building",pp:"built"},{b:"write",ing:"writing",pp:"written"},
+    {b:"paint",ing:"painting",pp:"painted"},{b:"complete",ing:"completing",pp:"completed"},
+    {b:"record",ing:"recording",pp:"recorded"},{b:"translate",ing:"translating",pp:"translated"},
+    {b:"discover",ing:"discovering",pp:"discovered"},{b:"repair",ing:"repairing",pp:"repaired"}];
+
+  // Skill 31 — Reduced clauses (kısaltılmış cümlecikler)
+  G[31] = () => {
+    const w=rnd(VPP);
+    if (Math.random()<0.5){ // PASİF: "The novel, ___ in 1925, ..."  (which was V3 → V3)
+      const subj=rnd(["The novel","The bridge","The vaccine","The report","The painting","The law","The theory","The device","The cathedral","The software"]);
+      const time=rnd(["in 1925","last year","after long delays","during the war","in a single week","two years ago","by a small team"]);
+      const main=rnd(["remains popular","is still used","changed the field","won an award","is widely studied","drew much praise","became a classic"]);
+      return mc(31, `${subj}, ___ ${time}, ${main}.`,
+        {t:w.pp, why:"Pasif kısaltılmış cümlecik: 'which/that was "+w.pp+"' → sadece V3 ("+w.pp+")."},
+        [{t:w.ing, why:"Etken -ing; anlam pasif olduğundan V3 gerekir."},
+         {t:"was "+w.pp, why:"Çekimli fiil; cümlede zaten asıl fiil var, ikinci fiil olmaz."},
+         {t:"which "+w.ing, why:"Kısaltmada bağlaç+yardımcı fiil DÜŞER; tek başına V3 kalır."}],
+        `'which/that was ${w.pp}' kısaltılır → "${w.pp}".`);
+    } else { // ETKEN: "The committee, ___ the proposal, ..."  (who was V-ing → V-ing)
+      const subj=rnd(["The committee","The author","The team","The researcher","The architect","The engineer","The student","The board"]);
+      const obj=rnd(["the proposal","the data","the project","the results","the evidence","the design","the survey"]);
+      const main=rnd(["made a discovery","asked for changes","reached a conclusion","found an error","won the prize","raised concerns"]);
+      return mc(31, `${subj}, ___ ${obj}, ${main}.`,
+        {t:w.ing, why:"Etken kısaltılmış cümlecik: 'who/which was "+w.ing+"' → sadece -ing ("+w.ing+")."},
+        [{t:w.pp, why:"Pasif V3; burada özne eylemi yapıyor (etken) → -ing gerekir."},
+         {t:"who "+w.ing, why:"Kısaltmada bağlaç düşer; tek başına -ing kalır."},
+         {t:w.b+"s", why:"Çekimli fiil; cümlede zaten asıl fiil var."}],
+        `'who/which was ${w.ing}' kısaltılır → "${w.ing}".`);
+    }
+  };
+
+  // Skill 32 — Redundancy / Wordiness (gereksiz tekrar)
+  const REDUN = [
+    {a:"introduced a ", red:"new", b:" innovation", tail:"that changed the market", why:"'innovation' zaten 'yeni' demek; 'new' gereksiz."},
+    {a:"decided to ", red:"return", b:" back", tail:"to the office", why:"'return' zaten 'geri dönmek'; 'back' gereksiz.", redIsFirst:true},
+    {a:"had to ", red:"repeat", b:" again", tail:"the same steps", why:"'repeat' zaten 'tekrar'; 'again' gereksiz.", redIsFirst:true},
+    {a:"reviewed the ", red:"final", b:" outcome", tail:"of the study", why:"'outcome' zaten sonuç; 'final' gereksiz."},
+    {a:"studied the ", red:"past", b:" history", tail:"of the city", why:"'history' zaten geçmiş; 'past' gereksiz."},
+    {a:"asked them to ", red:"join", b:" together", tail:"for the task", why:"'join' zaten 'birleşmek'; 'together' gereksiz.", redIsFirst:true},
+    {a:"was ", red:"completely", b:" finished", tail:"by noon", why:"'finished' zaten tam bitti demek; 'completely' gereksiz.", redIsFirst:true},
+    {a:"gathered ", red:"true", b:" facts", tail:"about the case", why:"'facts' zaten doğru bilgi; 'true' gereksiz."},
+    {a:"learned the ", red:"basic", b:" fundamentals", tail:"of design", why:"'fundamentals' zaten temel; 'basic' gereksiz."},
+    {a:"decided to ", red:"advance", b:" forward", tail:"with the plan", why:"'advance' zaten 'ileri gitmek'; 'forward' gereksiz.", redIsFirst:true}];
+  G[32] = () => {
+    const r=rnd(REDUN), s=rnd(SUBJ_P);
+    // 4 altı çizili: A=red kelimesi (HATA), B,C,D normal
+    const second = r.redIsFirst ? r.b.trim() : r.b.trim();
+    return err(32,[
+      {plain:cap(s)+" "+r.a}, {choice:"A",text:r.red, why:"HATA: "+r.why+" (kaldır).", error:true, correction:"'"+r.red+"' gereksiz → çıkar"},
+      {plain:" "}, {choice:"B",text:second, why:"İsim/fiil; doğru kullanılmış."},
+      {plain:" "}, {choice:"C",text:r.tail.split(" ")[0], why:"Doğru."},
+      {plain:" "+r.tail.split(" ").slice(1).join(" ")+" "}, {choice:"D",text:rnd(["overall","recently","clearly","mainly"]), why:"Zarf; doğru."}
+    ], `'${r.red}' gereksiz tekrardır. ${r.why}`);
+  };
+
+  // Skill 33 — Word form (isim/fiil/sıfat/zarf)
+  const FAM = [
+    {n:"success",v:"succeed",adj:"successful",adv:"successfully"},
+    {n:"creation",v:"create",adj:"creative",adv:"creatively"},
+    {n:"decision",v:"decide",adj:"decisive",adv:"decisively"},
+    {n:"production",v:"produce",adj:"productive",adv:"productively"},
+    {n:"competition",v:"compete",adj:"competitive",adv:"competitively"},
+    {n:"difference",v:"differ",adj:"different",adv:"differently"},
+    {n:"analysis",v:"analyze",adj:"analytical",adv:"analytically"},
+    {n:"strength",v:"strengthen",adj:"strong",adv:"strongly"},
+    {n:"beauty",v:"beautify",adj:"beautiful",adv:"beautifully"},
+    {n:"attraction",v:"attract",adj:"attractive",adv:"attractively"}];
+  G[33] = () => {
+    const fm=rnd(FAM);
+    const slot=rnd(["n","adj","adv"]);
+    const T=rnd(["company","project","design","method","program","strategy","plan","approach","system","report","team","study"]);
+    const frames={
+      n:[`The ${T} achieved real ___.`,`Experts praised the ___ of the ${T}.`,`The ${T} showed clear ___.`],
+      adj:[`It was a ___ ${T}.`,`They followed a ___ ${T}.`,`The ${T} was highly ___.`],
+      adv:[`The ${T} was run ___.`,`The team handled the ${T} ___.`,`The ${T} worked ___.`]};
+    const slotName={n:"isim",adj:"sıfat",adv:"zarf"};
+    const others={n:["v","adj","adv"],adj:["n","v","adv"],adv:["n","v","adj"]}[slot];
+    const tr={n:"isim",v:"fiil",adj:"sıfat",adv:"zarf"};
+    return mc(33, rnd(frames[slot]),
+      {t:fm[slot], why:`Bu boşluk ${slotName[slot]} ister → "${fm[slot]}".`},
+      others.map(o=>({t:fm[o], why:`Bu ${tr[o]} biçimi; burada ${slotName[slot]} gerekir.`})),
+      `Doğru sözcük türü ${slotName[slot]} → "${fm[slot]}".`);
+  };
+
+  // Skill 34 — Prepositions / idiomatic
+  const COLL = [
+    {lead:"She is interested",p:"in"},{lead:"The result depends",p:"on"},{lead:"They are proud",p:"of"},
+    {lead:"He is good",p:"at"},{lead:"The manager is responsible",p:"for"},{lead:"This is similar",p:"to"},
+    {lead:"The copy is different",p:"from"},{lead:"The team is capable",p:"of"},{lead:"The town is famous",p:"for"},
+    {lead:"The box is full",p:"of"},{lead:"We must focus",p:"on"},{lead:"They succeeded",p:"in"},
+    {lead:"She is afraid",p:"of"},{lead:"The plan is suitable",p:"for"},{lead:"He is aware",p:"of"},
+    {lead:"The committee relies",p:"on"},{lead:"The mixture consists",p:"of"},{lead:"She is fond",p:"of"},
+    {lead:"They are accustomed",p:"to"},{lead:"He is married",p:"to"}];
+  const PREPS=["in","on","at","for","of","to","from","with","about","by"];
+  G[34] = () => {
+    const c=rnd(COLL);
+    const obj=rnd(["modern art","the new method","their results","the project","this field","the outcome",
+      "the proposal","the data","her work","the budget","the topic","the design"]);
+    const wrong=shuffle(PREPS.filter(p=>p!==c.p)).slice(0,3);
+    return mc(34, `${c.lead} ___ ${obj}.`,
+      {t:c.p, why:`Bu kalıp '${c.p}' edatıyla kullanılır.`},
+      wrong.map(p=>({t:p, why:`Bu kalıpla '${p}' kullanılmaz; doğrusu '${c.p}'.`})),
+      `'${c.lead.split(" ").slice(-1)[0]}' + '${c.p}' kalıbı.`);
+  };
+
+  // Skill 35 — Causatives (make/have/let + yalın fiil)
+  G[35] = () => {
+    const caus=rnd(["made","had","let"]);
+    const subj=rnd(["The teacher","The manager","Her boss","The coach","The director","His father","The officer"]);
+    const obj=rnd(["the students","her assistant","the team","the workers","his brother","the class","the new staff"]);
+    const v=rnd(V);
+    const rest=rnd(["the report","the exercise","the form","the project","the room","the schedule"]);
+    return mc(35, `${subj} ${caus} ${obj} ___ ${rest}.`,
+      {t:v.b, why:`make/have/let + nesne + YALIN fiil → "${v.b}".`},
+      [{t:"to "+v.b, why:"make/have/let mastar (to) almaz; yalın fiil gerekir."},
+       {t:v.ing, why:"-ing değil; bu yapıda yalın fiil gelir."},
+       {t:v.ed, why:"Geçmiş biçim değil; yalın fiil gerekir."}],
+      `${caus} (causative) + nesne + yalın fiil → "${v.b}".`);
+  };
+
+  // Skill 36 — Tense consistency (zaman uyumu)
+  G[36] = () => {
+    const ctx=rnd(["Last year","Yesterday","In 2019","Last month","A century ago","During the 1990s","Two weeks ago"]);
+    const s=rnd(SUBJ_S);
+    const vv=shuffle(V.slice()).slice(0,3), [v1,v2,v3]=vv;
+    const oo=shuffle(OBJ.slice()).slice(0,3).map(o=>o.replace("the ","")), [o1,o2,o3]=oo;
+    return err(36,[
+      {plain:ctx+", "+s+" "}, {choice:"A",text:v1.ed, why:"Geçmiş zaman; cümleyle uyumlu, doğru."},
+      {plain:" the "+o1+", "}, {choice:"B",text:v2.ed, why:"Geçmiş zaman; doğru."},
+      {plain:" the "+o2+", and "}, {choice:"C",text:v3.s, why:"HATA: cümle GEÇMİŞ ("+ctx+"); bu fiil de geçmiş olmalı → '"+v3.ed+"'.", error:true, correction:"'"+v3.s+"' → '"+v3.ed+"'"},
+      {plain:" the "}, {choice:"D",text:o3, why:"İsim; doğru."}
+    ], `'${v3.s}' → '${v3.ed}'. Cümle geçmiş zamanda (${ctx}); fiiller tutarlı olmalı.`);
+  };
+
   // ---- dışa açılan API ---------------------------------------------------
   // Soruyu CÜMLE bazında tanımlayan anahtar (şık sırası değil, asıl cümle)
   function qKey(q){
@@ -677,8 +814,8 @@ const GEN = (() => {
   }
   // Karışık sınav seti: 15 Structure + 25 Written, hepsi farklı cümle
   function examSet(){
-    return [...uniqueFrom([1,2,3,4,5,6,7,8,9,10,26,27,28,29,30],15),
-            ...uniqueFrom([11,12,13,14,15,16,17,18,19,20,21,22,23,24,25],25)];
+    return [...uniqueFrom([1,2,3,4,5,6,7,8,9,10,26,27,28,29,30,31,33,34,35],15),
+            ...uniqueFrom([11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,32,36],25)];
   }
   function diagnosticSet(n){
     const all=Object.keys(G).map(Number);
