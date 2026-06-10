@@ -82,6 +82,17 @@ const GEN = (() => {
     {adj:"proper",   adv:"properly"},   {adj:"accurate", adv:"accurately"}];
 
   const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
+  const lcfirst = s => s.charAt(0).toLowerCase()+s.slice(1);
+
+  // Cümle başını çeşitlendiren giriş öbekleri (ilk kelimeyi değiştirir → tekdüzelik biter)
+  const LEADS = ["In recent years","During the study","According to the report","Across the region",
+    "For many years","In most cases","At the conference","Last season","Among researchers",
+    "In the new edition","After the review","Throughout history","In the latest survey","Over the past decade",
+    "In practice","As expected","By all accounts","In this field","In the report","At the institute"];
+  // %60 ihtimalle bir giriş öbeği ekler ve devamının ilk harfini küçültür
+  function withLead(startText){
+    return Math.random()<0.6 ? (rnd(LEADS)+", "+lcfirst(startText)) : startText;
+  }
 
   // ---- yardımcı kurucular ------------------------------------------------
   // mc: correct={t,why}, distractors=[{t,why}...]
@@ -136,7 +147,10 @@ const GEN = (() => {
   // Skill 2 — Edatların nesnesi
   G[2] = () => {
     const v=rnd(V), s=rnd(SUBJ_S), p1=rnd(PLACE), p2=rnd(PLACE), o=rnd(OBJ);
-    return mc(2, `In ${p1} near ${p2}, ___ ${v.s} ${o}.`,
+    const open=rnd([`In ${p1} near ${p2}`, `At ${p1} during the project`, `After the meeting in ${p1}`,
+      `Among the records in ${p1}`, `Throughout ${p1}`, `On the upper floor of ${p1}`,
+      `Beside ${p1}`, `Within ${p1}`, `Near ${p1} every morning`, `Inside ${p1}`]);
+    return mc(2, `${open}, ___ ${v.s} ${o}.`,
       {t:s, why:"Gerçek özne. Baştaki edat öbeklerinden sonra cümlenin bir öznesi olmalı."},
       [{t:"In "+rnd(PLACE), why:"Edat öbeği özne olamaz; içindeki isim edatın nesnesidir."},
        {t:rnd(["regularly","carefully","quickly"]), why:"Zarf özne görevini göremez."},
@@ -243,7 +257,7 @@ const GEN = (() => {
       {v:"forgot",    conj:"where", d:["that","which","because"], cl:["the keys had been left","the files were stored","the meeting would be held","the samples were kept"]},
       {v:"asked",     conj:"when", d:["that","what","which"], cl:["the train would arrive","the results would come","the store would open","the season would begin"]}];
     const f=rnd(frames), s=rnd(SUBJ_S), cl=rnd(f.cl);
-    return mc(7, `${cap(s)} ${f.v} ___ ${cl}.`,
+    return mc(7, withLead(`${cap(s)} ${f.v} ___ ${cl}.`),
       {t:f.conj, why:`Noun clause bağlacı; '${f.v}' fiilinin nesnesi olan clause'u başlatır.`},
       [{t:f.d[0], why:"Anlam/yapı uymuyor; burada fiilin nesnesi olan bir noun clause gerekiyor."},
        {t:f.d[1], why:"Bu bağlaç clause'un öznesi/nesnesi olmalıydı; cümlede o boşluk yok."},
@@ -254,7 +268,7 @@ const GEN = (() => {
   // Skill 8 — Noun clause bağlacı = özne
   G[8] = () => {
     const v=rnd(V), o=rnd(OBJ), s=rnd(SUBJ_S);
-    return mc(8, `${cap(s)} could not explain what ___ to ${o}.`,
+    return mc(8, withLead(`${cap(s)} could not explain what ___ to ${o}.`),
       {t:"had happened", why:"'what' hem bağlaç hem öznedir; hemen ardından çekimli fiil gelir."},
       [{t:"happening", why:"-ing tek başına fiil değil; clause'un fiili eksik kalır."},
        {t:"the happening", why:"İsim öbeği; 'what' zaten özne, ikinci özne olmaz ve fiil yok."},
@@ -265,7 +279,7 @@ const GEN = (() => {
   // Skill 9 — Adjective clause bağlaçları (nesne)
   G[9] = () => {
     const v=rnd(V), s=rnd(SUBJ_S), o=rnd(OBJ);
-    return mc(9, `${cap(o)} ___ ${s} ${v.ed} was highly detailed.`,
+    return mc(9, withLead(`${cap(o)} ___ ${s} ${v.ed} was highly detailed.`),
       {t:"that", why:"Adjective clause bağlacı; ismi niteler, ardından özne+fiil gelir (that S V)."},
       [{t:"it", why:"Bağlaç değil; iki clause'u birleştiremez."},
        {t:"which it", why:"Fazladan özne; 'which' zaten bağlaç, ardından 'it' gereksiz."},
@@ -276,7 +290,7 @@ const GEN = (() => {
   // Skill 10 — Adjective clause bağlacı = özne
   G[10] = () => {
     const s=rnd(SUBJ_S), vb=rnd(["received","attracted","drew","earned"]);
-    return mc(10, `${cap(s)} ${rnd(["praised","approved","selected"])} the design ___ ${vb} the most attention.`,
+    return mc(10, withLead(`${cap(s)} ${rnd(["praised","approved","selected"])} the design ___ ${vb} the most attention.`),
       {t:"that "+vb, why:"Bağlaç (that) + fiil. 'that' clause'un öznesidir; hemen ardından fiil gelir."},
       [{t:"it "+vb, why:"Fazladan özne; bağlaç yok, iki clause birleşmez."},
        {t:"which it "+vb, why:"'which' zaten özne; ardından 'it' fazladan özne olur."},
@@ -289,7 +303,7 @@ const GEN = (() => {
     const o=rnd(["quality","cost","design","purpose","value","size","range"]);
     const plur=rnd(["products","materials","components","samples","devices","reports","machines"]);
     return err(11,[
-      {plain:"The "}, {choice:"A",text:o, why:"Asıl özne ve TEKİL → fiil tekil olmalı."},
+      {plain:withLead("The ")}, {choice:"A",text:o, why:"Asıl özne ve TEKİL → fiil tekil olmalı."},
       {plain:" of the "}, {choice:"B",text:plur, why:"'of'un nesnesi; araya giren öbek, fiili etkilemez."},
       {plain:" "}, {choice:"C",text:"have", why:"HATA: çoğul fiil. Asıl özne tekil ('"+o+"') → 'has' olmalı.", error:true, correction:"'have' → 'has'"},
       {plain:" "}, {choice:"D",text:rnd(["improved","increased","changed","declined"]), why:"Fiilin ikinci parçası (V3); doğru."}
@@ -335,7 +349,7 @@ const GEN = (() => {
       {a:"to observe", b:"to measure", wrong:"calculating", right:"to calculate"}]);
     const lead=rnd(["The course focuses on","The program involves","The job requires","The training covers","Students practice"]);
     return err(14,[
-      {plain:lead+" "}, {choice:"A",text:trio.a, why:"Listenin ilk öğesi; biçimi belirler."},
+      {plain:withLead(lead+" ")}, {choice:"A",text:trio.a, why:"Listenin ilk öğesi; biçimi belirler."},
       {plain:", "}, {choice:"B",text:trio.b, why:"İlk öğeyle aynı biçim; doğru."},
       {plain:", and "}, {choice:"C",text:trio.wrong, why:"HATA: paralellik bozuldu. '"+trio.a+"' ile aynı biçimde olmalı → '"+trio.right+"'.", error:true, correction:"'"+trio.wrong+"' → '"+trio.right+"'"},
       {plain:" a "}, {choice:"D",text:rnd(["language","structure","method","report","subject","skill","model","sample"]), why:"İsim; doğru kullanılmış."}
@@ -358,7 +372,7 @@ const GEN = (() => {
     const subj=rnd(["The plan","The new model","The proposal","The design","The system","The strategy","The device"]);
     const tail=rnd(["according to the report","in every test","overall","in the long run","for the company"]);
     return err(15,[
-      {plain:subj+" is "}, {choice:"A",text:f.pair, why:"İkili bağlacın ilk parçası ('"+f.pair+" ... "+f.j+"')."},
+      {plain:withLead(subj+" is ")}, {choice:"A",text:f.pair, why:"İkili bağlacın ilk parçası ('"+f.pair+" ... "+f.j+"')."},
       {plain:" "}, {choice:"B",text:f.a, why:"İlk öğe; biçimi belirler."},
       {plain:" "}, {choice:"C",text:f.j, why:"İkili bağlacın ikinci parçası; doğru eşleşme."},
       {plain:" "}, {choice:"D",text:f.wrong, why:"HATA: paralellik yok. '"+f.a+"' ile aynı biçim → '"+f.right+"'.", error:true, correction:"'"+f.wrong+"' → '"+f.right+"'"},
@@ -370,7 +384,7 @@ const GEN = (() => {
   G[16] = () => {
     const v=rnd(IRR), s=rnd(SUBJ_P);
     return err(16,[
-      {plain:cap(s)+" "}, {choice:"A",text:"have", why:"Yardımcı fiil; ardından V3 (past participle) gelmeli."},
+      {plain:withLead(cap(s)+" ")}, {choice:"A",text:"have", why:"Yardımcı fiil; ardından V3 (past participle) gelmeli."},
       {plain:" "}, {choice:"B",text:v.past, why:"HATA: V2 (geçmiş) kullanılmış. 'have' sonrası V3 olmalı → '"+v.pp+"'.", error:true, correction:"'"+v.past+"' → '"+v.pp+"'"},
       {plain:" several "}, {choice:"C",text:rnd(["reports","designs","surveys","devices","projects","samples"]), why:"Çoğul isim; doğru."},
       {plain:" this "}, {choice:"D",text:rnd(["year","month","decade","season"]), why:"Zaman ifadesi; doğru."}
@@ -381,7 +395,7 @@ const GEN = (() => {
   G[17] = () => {
     const v=rnd(V), s=rnd(SUBJ_S);
     return err(17,[
-      {plain:"The "+rnd(["bridge","road","building","system"])+" "}, {choice:"A",text:"is", why:"'be' fiili; ardından Ving (etken) ya da V3 (edilgen) gelmeli."},
+      {plain:withLead("The "+rnd(["bridge","road","building","system"])+" ")}, {choice:"A",text:"is", why:"'be' fiili; ardından Ving (etken) ya da V3 (edilgen) gelmeli."},
       {plain:" currently being "}, {choice:"B",text:v.b, why:"HATA: 'being' sonrası V3 gerekir (edilgen) → '"+v.ed+"'.", error:true, correction:"'"+v.b+"' → '"+v.ed+"'"},
       {plain:" by "}, {choice:"C",text:rnd(["a local firm","the agency","experts"]), why:"Edilgen yapının fail ('by ...') kısmı; doğru."},
       {plain:" this "}, {choice:"D",text:rnd(["year","month"]), why:"Zaman ifadesi; doğru."}
@@ -393,7 +407,7 @@ const GEN = (() => {
     const v=rnd(V), s=rnd(SUBJ_P), m=rnd(["must","will","should","can","may"]);
     const wrongForm=rnd([v.s, v.ed, v.ing]);
     return err(18,[
-      {plain:cap(s)+" "}, {choice:"A",text:m, why:"Modal fiil; ardından YALIN fiil (V1) gelmeli."},
+      {plain:withLead(cap(s)+" ")}, {choice:"A",text:m, why:"Modal fiil; ardından YALIN fiil (V1) gelmeli."},
       {plain:" "}, {choice:"B",text:wrongForm, why:"HATA: modal sonrası çekimli/-ing/-ed biçim olmaz → yalın '"+v.b+"'.", error:true, correction:"'"+wrongForm+"' → '"+v.b+"'"},
       {plain:" the "}, {choice:"C",text:rnd(OBJ).replace("the ",""), why:"Nesne; doğru."},
       {plain:" before the "}, {choice:"D",text:rnd(["deadline","meeting","review","launch"]), why:"İsim; doğru."}
@@ -425,7 +439,7 @@ const GEN = (() => {
       {det:"many",    right:"much",   noun:"information",why:"'many' sayılabilenlerle; 'information' sayılamaz → 'much'."}]);
     const lead=rnd(["The study still needs","The project required","The lab has collected","Researchers gathered","The team still lacks"]);
     return err(20,[
-      {plain:lead+" "}, {choice:"A",text:detErr.det, why:"HATA: "+detErr.why, error:true, correction:"'"+detErr.det+"' → '"+detErr.right+"'"},
+      {plain:withLead(lead+" ")}, {choice:"A",text:detErr.det, why:"HATA: "+detErr.why, error:true, correction:"'"+detErr.det+"' → '"+detErr.right+"'"},
       {plain:" "}, {choice:"B",text:detErr.noun, why:"İsim; sayılabilirliği belirteci belirler."},
       {plain:" to "}, {choice:"C",text:rnd(["complete","finish","support","validate","continue"]), why:"Fiil; doğru."},
       {plain:" the "}, {choice:"D",text:rnd(["analysis","project","review","study","experiment","report"]), why:"İsim; doğru."}
@@ -435,7 +449,7 @@ const GEN = (() => {
   // Skill 21 — özne/nesne zamiri
   G[21] = () => {
     return err(21,[
-      {plain:"The "+rnd(["teacher","manager","director","committee"])+" gave "}, {choice:"A",text:rnd(["the students","my colleague","the new staff"]), why:"Fiilin nesnesi; doğru."},
+      {plain:withLead("The "+rnd(["teacher","manager","director","committee"])+" gave ")}, {choice:"A",text:rnd(["the students","my colleague","the new staff"]), why:"Fiilin nesnesi; doğru."},
       {plain:" and "}, {choice:"B",text:"I", why:"HATA: fiilin nesnesi konumunda nesne zamiri gerekir → 'me'.", error:true, correction:"'I' → 'me'"},
       {plain:" extra "}, {choice:"C",text:rnd(["time","support","funding"]), why:"İsim; doğru."},
       {plain:" to finish the "}, {choice:"D",text:rnd(["task","report","project"]), why:"İsim; doğru."}
@@ -446,7 +460,7 @@ const GEN = (() => {
   G[22] = () => {
     const s=rnd(["The company","The firm","The agency","The university","The team"]);
     return err(22,[
-      {plain:s+" "}, {choice:"A",text:rnd(["increased","expanded","improved","reduced"]), why:"Fiil; doğru."},
+      {plain:withLead(s+" ")}, {choice:"A",text:rnd(["increased","expanded","improved","reduced"]), why:"Fiil; doğru."},
       {plain:" "}, {choice:"B",text:"it's", why:"HATA: 'it's' = 'it is'. İyelik için kesmesiz 'its' gerekir.", error:true, correction:"'it's' → 'its'"},
       {plain:" "}, {choice:"C",text:rnd(["profits","sales","output","staff"]), why:"İsim; doğru."},
       {plain:" last "}, {choice:"D",text:rnd(["quarter","year","season"]), why:"Zaman ifadesi; doğru."}
@@ -458,7 +472,7 @@ const GEN = (() => {
     const sing=rnd(["student","employee","researcher","citizen","traveler","applicant","customer","driver","patient","member"]);
     const cond=rnd(["misses a deadline","has a question","needs assistance","makes an error","finishes early","loses a document"]);
     return err(23,[
-      {plain:"When a "}, {choice:"A",text:sing, why:"TEKİL gönderim; zamir de tekil olmalı."},
+      {plain:rnd(["When a ","If a ","Whenever a ","Each time a ","Once a "])}, {choice:"A",text:sing, why:"TEKİL gönderim; zamir de tekil olmalı."},
       {plain:" "+cond+", "}, {choice:"B",text:"they", why:"HATA: tekil '"+sing+"' ile uyumsuz çoğul zamir → 'he or she'.", error:true, correction:"'they' → 'he or she'"},
       {plain:" should "}, {choice:"C",text:rnd(["contact","inform","notify","email","call"]), why:"Modal sonrası yalın fiil; doğru."},
       {plain:" the "}, {choice:"D",text:rnd(["instructor","supervisor","office","manager","desk"]), why:"İsim; doğru."}
@@ -469,7 +483,7 @@ const GEN = (() => {
   G[24] = () => {
     const p=rnd(ADJpair), s=rnd(SUBJ_P), o=rnd(["task","project","report","design"]);
     return err(24,[
-      {plain:cap(s)+" "}, {choice:"A",text:rnd(["completed","finished","handled","performed"]), why:"Fiil; doğru kullanılmış."},
+      {plain:withLead(cap(s)+" ")}, {choice:"A",text:rnd(["completed","finished","handled","performed"]), why:"Fiil; doğru kullanılmış."},
       {plain:" the "}, {choice:"B",text:rnd(ADJ), why:"İsmi ("+o+") niteleyen sıfat; doğru."},
       {plain:" "+o+" "}, {choice:"C",text:p.adj, why:"HATA: fiili niteliyor → zarf olmalı → '"+p.adv+"'.", error:true, correction:"'"+p.adj+"' → '"+p.adv+"'"},
       {plain:" and "}, {choice:"D",text:rnd(["efficiently","precisely","early"]), why:"Fiili niteleyen zarf; doğru."}
@@ -482,7 +496,7 @@ const GEN = (() => {
     const lv=rnd(["seems","sounds","appears","remains","looks","becomes"]);
     const s=rnd(["The proposal","The plan","The result","The method","The solution"]);
     return err(25,[
-      {plain:s+" "}, {choice:"A",text:lv, why:"Linking verb; ardından özneyi niteleyen SIFAT gelir."},
+      {plain:withLead(s+" ")}, {choice:"A",text:lv, why:"Linking verb; ardından özneyi niteleyen SIFAT gelir."},
       {plain:" "}, {choice:"B",text:p.adv, why:"HATA: linking verb sonrası sıfat gelir (zarf değil) → '"+p.adj+"'.", error:true, correction:"'"+p.adv+"' → '"+p.adj+"'"},
       {plain:" to "}, {choice:"C",text:rnd(["most experts","the committee","the team"]), why:"Edat öbeği; doğru."},
       {plain:" after the "}, {choice:"D",text:rnd(["review","analysis","meeting"]), why:"İsim; doğru."}
