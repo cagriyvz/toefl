@@ -147,31 +147,55 @@ const GEN = (() => {
 
   // Skill 4 — Past participle (pasif sıfat)
   G[4] = () => {
-    const v=rnd(V), s=rnd(SUBJ_P), grp=rnd(["the committee","the experts","the board","the team"]);
-    return mc(4, `The reports ___ by ${grp} were finally published.`,
-      {t:v.ed, why:"Past participle (pasif sıfat). Asıl fiil 'were published' var; özneyi niteleyen V3 doğru."},
-      [{t:"were "+v.ed, why:"Fazladan fiil. 'were published' zaten asıl fiil; ikinci fiil olmaz."},
-       {t:v.ing, why:"Etken -ing; burada anlam pasif ('by ...'), V3 gerekir."},
+    const v=rnd(V);
+    const s=rnd(["reports","documents","samples","designs","results","articles","findings",
+      "records","drawings","proposals","photographs","measurements","specimens","manuscripts"]);
+    const agent=rnd(["the committee","the experts","the board","the team","the editors","the panel",
+      "a specialist","the engineers","the reviewers","the auditors","the professor","the institute"]);
+    const tail=rnd(["were finally published","were widely praised","became a new standard",
+      "were later revised","received an award","were quickly approved","were carefully archived",
+      "were soon forgotten","drew great interest","were openly criticized"]);
+    return mc(4, `The ${s} ___ by ${agent} ${tail}.`,
+      {t:v.ed, why:"Past participle (pasif sıfat). Cümlenin asıl fiili zaten var; özneyi niteleyen V3 doğru."},
+      [{t:"were "+v.ed, why:"Fazladan fiil. Cümlede zaten asıl fiil var, ikinci fiil olmaz."},
+       {t:v.ing, why:"Etken -ing; anlam pasif ('by ...'), V3 gerekir."},
        {t:"they "+v.ed, why:"Fazladan özne+fiil; bağlaçsız ikinci clause olmaz."}],
-      `'were published' asıl fiil; "by ${grp}" pasif → özneyi niteleyen V3 "${v.ed}".`);
+      `'by ${agent}' pasif yapı → özneyi niteleyen V3 "${v.ed}".`);
   };
 
-  // Skill 5 — Coordinate bağlaçlar
+  // Skill 5 — Coordinate bağlaçlar (geniş, tutarlı cümle havuzları)
+  const C5 = {
+    so:  { rel:"sonuç (sebep→sonuç)", a:["It started to rain","The road was icy","The battery died",
+            "The alarm went off","The flight was delayed","The printer broke down","The file was too large",
+            "The store was closed","The power went out","The soup was cold","The book was sold out","Traffic was heavy"],
+           b:["we stayed inside","they drove slowly","the phone shut down","everyone woke up",
+            "the trip was postponed","they wrote by hand","it would not upload","she went somewhere else",
+            "the lights went off","he heated it again","she ordered it online","we left early"] },
+    but: { rel:"zıtlık", a:["The test was hard","The room was small","The plan looked good","The car was old",
+            "The movie was long","The hotel was cheap","The task seemed simple","The weather was cold"],
+           b:["everyone passed","it felt cozy","it never worked","it ran perfectly","it stayed interesting",
+            "it was very clean","it took all day","the sea was warm"] },
+    and: { rel:"ekleme", a:["The sun was shining","The museum opened early","The team trained hard",
+            "The garden was quiet","The bakery smelled great","The lecture was clear","The river was calm"],
+           b:["the sky was blue","the crowds arrived","they won the match","the birds were singing",
+            "the coffee was fresh","the notes were useful","the boats drifted by"] },
+    or:  { rel:"seçenek", a:["We can take the bus","You may pay now","They can stay here","We could fly",
+            "You can call her","We can start today","You may write it"],
+           b:["we can walk","you may pay later","they can come with us","we could drive",
+            "you can send an email","we can wait until Monday","you may type it"] },
+  };
   G[5] = () => {
-    const frames=[
-      {c1:"The experiment failed", conj:"so", c2:"the team repeated it", why:"sonuç bildirir (sebep→sonuç)"},
-      {c1:"The data was clear", conj:"but", c2:"the conclusion was not", why:"zıtlık bildirir"},
-      {c1:"The sun was shining", conj:"and", c2:"the sky was blue", why:"ekleme yapar"},
-      {c1:"We can take the bus", conj:"or", c2:"we can walk", why:"seçenek sunar"}];
-    const f=rnd(frames);
-    return mc(5, `${f.c1}, ___ ${f.c2}.`,
-      {t:f.conj, why:`Coordinate bağlaç; iki bağımsız clause'u virgülle birleştirir (${f.why}).`},
-      ...[shuffle([
-        {t:"then",      why:"Bağlaç değil, zarftır; iki clause'u tek başına birleştiremez."},
-        {t:"however",   why:"Conjunctive adverb; clause bağlamak için noktalı virgül gerekir, virgül yetmez."},
-        {t:"therefore", why:"Conjunctive adverb; iki clause'u sadece virgülle bağlayamaz."},
-        {t:"as a result",why:"Bağlaç değil; clause birleştirici görevi göremez."}]).slice(0,3)],
-      `İki bağımsız clause'u birleştiren coordinate bağlaç (and/but/or/so) → "${f.conj}".`);
+    const conj=rnd(["so","but","and","or"]);
+    const p=C5[conj];
+    return mc(5, `${rnd(p.a)}, ___ ${rnd(p.b)}.`,
+      {t:conj, why:`Coordinate bağlaç; iki bağımsız clause'u virgülle birleştirir (${p.rel}).`},
+      shuffle([
+        {t:"then",       why:"Bağlaç değil, zarftır; iki clause'u tek başına birleştiremez."},
+        {t:"however",    why:"Conjunctive adverb; clause bağlamak için noktalı virgül gerekir."},
+        {t:"therefore",  why:"Conjunctive adverb; iki clause'u sadece virgülle bağlayamaz."},
+        {t:"as a result",why:"Bağlaç değil; clause birleştirici görevi göremez."},
+        {t:"moreover",   why:"Conjunctive adverb; coordinate bağlaç değildir."}]).slice(0,3),
+      `İki bağımsız clause'u birleştiren coordinate bağlaç (and/but/or/so) → "${conj}".`);
   };
 
   // Skill 6 — Adverb clause bağlaçları
@@ -190,11 +214,13 @@ const GEN = (() => {
   // Skill 7 — Noun clause bağlaçları
   G[7] = () => {
     const frames=[
-      {v:"explained", conj:"why", d:["because","the","so"], cl:"the experiment had failed"},
-      {v:"described", conj:"how", d:["what","which","that the"], cl:"the system actually works"},
-      {v:"wondered",  conj:"whether", d:["that","what","which"], cl:"the results were reliable"}];
-    const f=rnd(frames), s=rnd(SUBJ_S);
-    return mc(7, `${cap(s)} ${f.v} ___ ${f.cl}.`,
+      {v:"explained", conj:"why", d:["because","the","so"], cl:["the experiment had failed","the plan was changed","the costs had risen","the project was delayed","the theory was wrong"]},
+      {v:"described", conj:"how", d:["what","which","that the"], cl:["the system actually works","the engine starts","the cells divide","the device operates","the process begins"]},
+      {v:"wondered",  conj:"whether", d:["that","what","which"], cl:["the results were reliable","the offer was genuine","the data was complete","the method was valid","the source was correct"]},
+      {v:"forgot",    conj:"where", d:["that","which","because"], cl:["the keys had been left","the files were stored","the meeting would be held","the samples were kept"]},
+      {v:"asked",     conj:"when", d:["that","what","which"], cl:["the train would arrive","the results would come","the store would open","the season would begin"]}];
+    const f=rnd(frames), s=rnd(SUBJ_S), cl=rnd(f.cl);
+    return mc(7, `${cap(s)} ${f.v} ___ ${cl}.`,
       {t:f.conj, why:`Noun clause bağlacı; '${f.v}' fiilinin nesnesi olan clause'u başlatır.`},
       [{t:f.d[0], why:"Anlam/yapı uymuyor; burada fiilin nesnesi olan bir noun clause gerekiyor."},
        {t:f.d[1], why:"Bu bağlaç clause'un öznesi/nesnesi olmalıydı; cümlede o boşluk yok."},
@@ -441,27 +467,39 @@ const GEN = (() => {
   };
 
   // ---- dışa açılan API ---------------------------------------------------
-  // Bir skill için n adet TAZE, tekrarsız soru üret
+  // Soruyu CÜMLE bazında tanımlayan anahtar (şık sırası değil, asıl cümle)
+  function qKey(q){
+    return q.type==="mc"
+      ? q.stem
+      : q.segments.map(s=>s.text!==undefined?("["+s.text+"]"):s.plain).join("");
+  }
+  // Bir skill için n adet TAZE, AYNI CÜMLE tekrar etmeyen soru üret
   function forSkill(skill, n){
     if (!G[skill]) return [];
     const out=[], seen=new Set(); let guard=0;
-    while(out.length<n && guard<n*30){
+    while(out.length<n && guard<n*60){
       const q=G[skill](); guard++;
-      const key = q.type==="mc" ? q.stem+"|"+q.options.join("|")
-                                : q.segments.map(s=>s.text||s.plain).join("|");
+      const key=qKey(q);
       if(seen.has(key)) continue;
       seen.add(key); out.push(q);
     }
     return out;
   }
-  // Karışık sınav seti: structure skill'lerinden mc ağırlıklı + written'dan err
+  // n adet, aynı cümleyi tekrarlamadan, verilen skill listesinden üret
+  function uniqueFrom(skills, n){
+    const out=[], seen=new Set(); let guard=0;
+    while(out.length<n && guard<n*80){
+      const q=G[rnd(skills)](); guard++;
+      const key=qKey(q);
+      if(seen.has(key)) continue;
+      seen.add(key); out.push(q);
+    }
+    return out;
+  }
+  // Karışık sınav seti: 15 Structure + 25 Written, hepsi farklı cümle
   function examSet(){
-    const structSkills=[1,2,3,4,5,6,7,8,9,10];
-    const writtenSkills=[11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
-    const qs=[];
-    for(let i=0;i<15;i++) qs.push(G[rnd(structSkills)]());
-    for(let i=0;i<25;i++) qs.push(G[rnd(writtenSkills)]());
-    return qs;
+    return [...uniqueFrom([1,2,3,4,5,6,7,8,9,10],15),
+            ...uniqueFrom([11,12,13,14,15,16,17,18,19,20,21,22,23,24,25],25)];
   }
   function diagnosticSet(n){
     const all=[]; for(let k=1;k<=25;k++) all.push(k);
