@@ -23,8 +23,8 @@ const CURRICULUM = {
       focus: "Tekil/çoğul, sayılabilen/sayılamayan isimler; özne/nesne zamirleri, iyelik ve referans." },
     { day: 7, title: "Sıfat & Zarf", skills: [24, 25],
       focus: "Sıfat mı zarf mı? Linking verb'lerden sonra sıfat." },
-    { day: 8, title: "İleri Konular + Genel Tekrar", skills: [26, 27, 28, 29],
-      focus: "Karşılaştırma, devrik yapı, koşul cümleleri, gerund/infinitive. Sonra tam deneme sınavı." }
+    { day: 8, title: "İleri Konular + Genel Tekrar", skills: [26, 27, 28, 29, 30],
+      focus: "Karşılaştırma, devrik yapı, koşul cümleleri, gerund/infinitive, articles. Sonra tam deneme sınavı." }
   ],
 
   // SKILL'LER --------------------------------------------------------------
@@ -678,6 +678,22 @@ const CURRICULUM = {
         { type:"mc", stem:"She enjoys ___ to classical music.", options:["to listen","listening","listen","listened"], answer:1, explain:"'enjoy' + gerund → 'listening'." },
         { type:"mc", stem:"They decided ___ the project early.", options:["finishing","to finish","finish","finished"], answer:1, explain:"'decide' + mastar → 'to finish'." },
         { type:"mc", stem:"He avoided ___ about the problem.", options:["to talk","talking","talk","talks"], answer:1, explain:"'avoid' + gerund → 'talking'." }
+      ]
+    },
+
+    30: {
+      title: "Articles (a / an / the)",
+      category: "Structure",
+      rule: `<p><b>a / an</b> = belirsiz (ilk kez bahsedilen, tekil sayılabilen isim). Seçim <b>sese</b> göre:
+        ünsüz ses → <b>a</b>, ünlü ses → <b>an</b>.</p>
+        <div class="ex"><p><b>a</b> book, <b>a</b> university (/juː/), <b>a</b> useful tool · <b>an</b> apple, <b>an</b> hour (sessiz h), <b>an</b> honest answer</p>
+        <p><b>the</b> = belirli/tek olan: <b>the</b> sun, <b>the</b> same problem, <b>the</b> tallest tower, <b>the</b> first prize</p></div>
+        <p>Tuzak: harfe değil <b>sese</b> bak (an hour, a university). Tekil sayılabilir isim makalesiz olmaz.</p>`,
+      chart: "a/an = belirsiz (ses kuralı: ünsüz→a, ünlü→an). the = belirli/tek. an hour, a university (sese göre).",
+      questions: [
+        { type:"mc", stem:"She waited for ___ hour.", options:["a","an","the","—"], answer:1, explain:"'hour' sessiz h → ünlü ses → 'an hour'." },
+        { type:"mc", stem:"He is studying at ___ university.", options:["a","an","the","—"], answer:0, explain:"'university' /juː/ ünsüz ses → 'a university'." },
+        { type:"mc", stem:"___ sun is the center of our solar system.", options:["A","An","The","—"], answer:2, explain:"Tek/belirli → 'The sun'." }
       ]
     }
   }

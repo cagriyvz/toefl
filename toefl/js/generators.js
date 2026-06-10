@@ -612,6 +612,39 @@ const GEN = (() => {
     }
   };
 
+  // Skill 30 — Articles (a / an / the)
+  // an: ünlü SES ile başlayanlar (sessiz h dahil) · a: ünsüz ses (/juː/, /w/ dahil)
+  const ART_AN = ["apple","umbrella","elephant","idea","engineer","orange","island","hour","honest answer",
+    "X-ray","old map","egg","oven","artist","easy exam","unusual request","exciting offer","interesting story",
+    "honest mistake","ancient ruin","empty box","open window"];
+  const ART_A = ["book","car","table","house","computer","garden","university","uniform","useful tool",
+    "European tour","one-way ticket","unique idea","historic site","dog","phone","camera","ticket","library",
+    "popular song","global market","small village","heavy box"];
+  const ART_THE = ["sun","moon","sky","ocean","world","universe","equator","atmosphere","internet",
+    "same problem","first prize","largest planet","tallest tower","oldest building","capital"];
+  G[30] = () => {
+    if (Math.random()<0.7){ // a vs an
+      const useAn=Math.random()<0.5;
+      const noun=useAn?rnd(ART_AN):rnd(ART_A);
+      const correct=useAn?"an":"a", wrong=useAn?"a":"an";
+      const lead=rnd(["She bought","He wrote","They found","We saw","I need","You will need","The shop sold","She drew"]);
+      return mc(30, `${lead} ___ ${noun}.`,
+        {t:correct, why:`'${noun}' ${useAn?"ünlü sesle":"ünsüz sesle"} başlıyor → "${correct}" (ses kuralı).`},
+        [{t:wrong, why:`Ses uyumsuz; '${noun}' için "${correct}" gerekir.`},
+         {t:"the", why:"İlk kez bahsediliyor (belirli değil) → 'a/an' gerekir, 'the' değil."},
+         {t:"—", why:"Tekil sayılabilir isim makalesiz olmaz; 'a/an' gerekir."}],
+        `Ses kuralı: ${useAn?"ünlü ses → an":"ünsüz ses → a"} → "${correct} ${noun}".`);
+    } else { // the (tek/belirli)
+      const n=rnd(ART_THE);
+      return mc(30, `___ ${n} ${rnd(["is well known","was studied","changed over time","is important","remained the same"])}.`,
+        {t:"The", why:`Tek/belirli şey ('${n}') → 'the'.`},
+        [{t:"A", why:"Belirli/tek bir şey için 'the' gerekir, 'a' değil."},
+         {t:"An", why:"Belirli/tek bir şey için 'the' gerekir, 'an' değil."},
+         {t:"—", why:"Burada belirli bir şey kastediliyor → 'the' gerekir."}],
+        `Tek/belirli isim → "The ${n}".`);
+    }
+  };
+
   // ---- dışa açılan API ---------------------------------------------------
   // Soruyu CÜMLE bazında tanımlayan anahtar (şık sırası değil, asıl cümle)
   function qKey(q){
@@ -644,7 +677,7 @@ const GEN = (() => {
   }
   // Karışık sınav seti: 15 Structure + 25 Written, hepsi farklı cümle
   function examSet(){
-    return [...uniqueFrom([1,2,3,4,5,6,7,8,9,10,26,27,28,29],15),
+    return [...uniqueFrom([1,2,3,4,5,6,7,8,9,10,26,27,28,29,30],15),
             ...uniqueFrom([11,12,13,14,15,16,17,18,19,20,21,22,23,24,25],25)];
   }
   function diagnosticSet(n){
