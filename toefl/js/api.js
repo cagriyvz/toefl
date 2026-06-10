@@ -72,6 +72,9 @@ const API = (() => {
   async function adminSaveSettings(aiKey,aiModel){ return call("/api/admin/settings",{method:"POST",body:JSON.stringify({aiKey,aiModel})}); }
   async function adminEditUser(id,firstName,lastName){ return call("/api/admin/user/"+id+"/edit",{method:"POST",body:JSON.stringify({firstName,lastName})}); }
   async function adminResetPassword(id,password){ return call("/api/admin/user/"+id+"/password",{method:"POST",body:JSON.stringify({password})}); }
+  async function announcements(){ return call("/api/announcements"); }
+  async function adminCreateAnnouncement(title,body){ return call("/api/admin/announcement",{method:"POST",body:JSON.stringify({title,body})}); }
+  async function adminDeleteAnnouncement(id){ return call("/api/admin/announcement/"+id,{method:"DELETE"}); }
   async function createTicket(category,message){ return call("/api/ticket",{method:"POST",body:JSON.stringify({category,message})}); }
   async function adminTickets(){ return call("/api/admin/tickets"); }
   async function adminUpdateTicket(id,status){ return call("/api/admin/ticket/"+id,{method:"POST",body:JSON.stringify({status})}); }
@@ -81,7 +84,8 @@ const API = (() => {
            health, register, login, logout, me, saveAttempt, logEvent, leaderboard,
            explain, adminUsers, adminUserDetail, adminStats, adminDeleteUser,
            adminGetSettings, adminSaveSettings, adminEditUser, adminResetPassword,
-           createTicket, adminTickets, adminUpdateTicket, adminDeleteTicket };
+           createTicket, adminTickets, adminUpdateTicket, adminDeleteTicket,
+           announcements, adminCreateAnnouncement, adminDeleteAnnouncement };
 })();
 
 if (typeof module!=="undefined") module.exports = { API };

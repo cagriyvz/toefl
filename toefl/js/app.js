@@ -96,6 +96,7 @@ const App = (() => {
     if (route==="adminuser") return renderAdminUser(arg);
     if (route==="adminsettings") return renderAdminSettings();
     if (route==="admintickets") return renderAdminTickets();
+    if (route==="adminannounce") return renderAdminAnnounce();
     if (route==="support") return renderSupport();
   }
 
@@ -141,6 +142,7 @@ const App = (() => {
     }
 
     view().innerHTML = `
+      <div id="home-announce"></div>
       <section class="hero">
         <h1>${greeting}</h1>
         <p>${progress.plan?'Sana özel çalışma planın hazır. Öncelikli konularından başla.':'Kişisel planın için tanı testini tamamla.'}</p>
@@ -158,6 +160,19 @@ const App = (() => {
         </div>
       </section>
       ${planHtml}`;
+    loadAnnouncements();
+  }
+  async function loadAnnouncements(){
+    const el=document.getElementById("home-announce"); if(!el||!API.authed()) return;
+    try{
+      const r=await API.announcements();
+      if(!r.announcements||!r.announcements.length){ el.innerHTML=""; return; }
+      el.innerHTML = r.announcements.map(a=>`
+        <div class="announce">
+          <span class="announce-ico">📢</span>
+          <div class="announce-txt">${a.title?`<b>${esc(a.title)}</b>`:""}<div class="announce-body">${esc(a.body).replace(/\n/g,"<br>")}</div></div>
+        </div>`).join("");
+    }catch(_){ el.innerHTML=""; }
   }
 
   // --- DAY ---------------------------------------------------------------
@@ -829,6 +844,7 @@ const App = (() => {
       <div class="hero"><h1>🛠️ Admin Paneli</h1><p>Tüm üyeler, bilgileri ve gelişimleri.</p>
         <div class="hero-row" id="adm-stats"></div>
         <div class="lesson-actions">
+          <button class="btn sec" onclick="App.go('adminannounce')">📢 Duyurular</button>
           <button class="btn sec" onclick="App.go('admintickets')">📨 Talepler</button>
           <button class="btn sec" onclick="App.go('adminsettings')">⚙️ AI / API Ayarları</button>
         </div>
@@ -914,6 +930,47 @@ const App = (() => {
          const h=document.getElementById("adu-name"); if(h)h.textContent=r.name; }
     catch(e){ msg.style.color="var(--bad)"; msg.textContent=e.message; }
   }
+  // --- ADMIN: DUYURULAR --------------------------------------------------
+  async function renderAdminAnnounce(){
+    if(!(API.authed()&&API.user()&&API.user().isAdmin)){ return go("home"); }
+    view().innerHTML=`<button class="back" onclick="App.go('admin')">← Admin paneli</button>
+      <div class="card auth-card" style="max-width:560px">
+        <h2>📢 Duyuru Yayınla</h2>
+        <p class="cat">Yayınladığın duyuru tüm kullanıcıların ana sayfasında görünür.</p>
+        <div class="form">
+          <label>Başlık (opsiyonel)<input id="an-title" placeholder="Örn. Sınav Haftası"></label>
+          <label>Mesaj<textarea id="an-body" rows="4" placeholder="Duyuru metni..."></textarea></label>
+          <div class="form-err" id="an-err"></div>
+          <button class="btn" onclick="App.postAnnounce()">Yayınla</button>
+        </div>
+      </div>
+      <div class="section-title">Yayındaki duyurular</div>
+      <div id="an-list"><p class="empty">Yükleniyor…</p></div>`;
+    loadAnnList();
+  }
+  async function loadAnnList(){
+    const el=document.getElementById("an-list"); if(!el) return;
+    try{
+      const r=await API.announcements();
+      if(!r.announcements.length){ el.innerHTML=`<p class="empty">Henüz duyuru yok.</p>`; return; }
+      el.innerHTML=r.announcements.map(a=>`
+        <div class="tk-card open">
+          <div class="tk-top"><b>${esc(a.title||"Duyuru")}</b><span class="cat">· ${fmtDate(a.created)}</span></div>
+          <div class="tk-msg">${esc(a.body)}</div>
+          <div class="tk-actions"><button class="btn sec sm danger" onclick="App.delAnnounce(${a.id})">🗑️ Sil</button></div>
+        </div>`).join("");
+    }catch(e){ el.innerHTML=`<p class="empty">${esc(e.message)}</p>`; }
+  }
+  async function postAnnounce(){
+    const title=document.getElementById("an-title").value.trim();
+    const body=document.getElementById("an-body").value.trim();
+    const err=document.getElementById("an-err");
+    if(body.length<2){ err.style.color="var(--bad)"; err.textContent="Mesaj yaz."; return; }
+    try{ await API.adminCreateAnnouncement(title,body); document.getElementById("an-title").value=""; document.getElementById("an-body").value=""; err.style.color="var(--good)"; err.textContent="✓ Yayınlandı"; loadAnnList(); }
+    catch(e){ err.style.color="var(--bad)"; err.textContent=e.message; }
+  }
+  async function delAnnounce(id){ if(!confirm("Duyuru silinsin mi?"))return; try{ await API.adminDeleteAnnouncement(id); loadAnnList(); }catch(e){ alert(e.message); } }
+
   async function adminResetPw(id){
     const np=prompt("Yeni şifre (en az 6 karakter):");
     if(np===null) return;
@@ -1178,5 +1235,6 @@ const App = (() => {
            beginDiagnostic:renderDiagnosticInternal, beginExam:startExam, confirmQuit,
            submitAuth, doLogout, aiExplain,
            flashReveal, flashNext, adminDelete, saveAiSettings, adminEditName, adminResetPw,
-           submitTicket, ticketStatus, ticketDelete };
+           submitTicket, ticketStatus, ticketDelete,
+           postAnnounce, delAnnounce };
 })();

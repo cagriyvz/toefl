@@ -131,6 +131,14 @@ body.locked #support-fab{display:none}
 .ai-text{background:linear-gradient(135deg,#221d3a,#1a2138);border:1px solid var(--line);border-radius:12px;
   padding:14px 16px;font-size:14px;line-height:1.6;margin-top:10px}
 
+/* DUYURULAR (ana sayfa bandı) */
+#home-announce{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+.announce{display:flex;gap:12px;align-items:flex-start;background:linear-gradient(135deg,#23306a,#1c2440);
+  border:1px solid #34406b;border-left:4px solid var(--accent);border-radius:12px;padding:13px 16px}
+.announce-ico{font-size:20px;line-height:1.3}
+.announce-txt b{display:block;margin-bottom:2px;font-size:15px}
+.announce-body{font-size:14px;color:var(--txt);line-height:1.55;white-space:pre-wrap}
+
 /* LEADERBOARD */
 .lb-head,.lb-row{display:grid;grid-template-columns:42px 1fr 78px 70px 70px;gap:8px;align-items:center;padding:11px 14px}
 .lb-head{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}

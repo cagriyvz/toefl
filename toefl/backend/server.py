@@ -113,6 +113,8 @@ SCHEMA = [
   f"""CREATE TABLE IF NOT EXISTS tickets(
       id {PK}, user_id INTEGER, name TEXT, email TEXT, category TEXT,
       message TEXT NOT NULL, status TEXT DEFAULT 'open', created REAL NOT NULL)""",
+  f"""CREATE TABLE IF NOT EXISTS announcements(
+      id {PK}, title TEXT DEFAULT '', body TEXT NOT NULL, created REAL NOT NULL)""",
 ]
 
 def init_db():
@@ -228,6 +230,9 @@ class TicketUpdateIn(BaseModel):
     status: str
 class PwResetIn(BaseModel):
     password: str
+class AnnouncementIn(BaseModel):
+    title: str = ""
+    body: str
 
 # ---------------------------------------------------------------- progress
 def build_progress(uid):
@@ -369,6 +374,30 @@ def admin_delete_ticket(tid: int, admin=Depends(require_admin)):
     with closing(db()) as con, con:
         con.execute("DELETE FROM tickets WHERE id=?",(tid,))
     return {"ok":True}
+
+# ---------------------------------------------------------------- DUYURULAR
+@app.get("/api/announcements")
+def announcements(user=Depends(current_user)):
+    with closing(db()) as con:
+        rows = con.execute("SELECT id,title,body,created FROM announcements ORDER BY created DESC LIMIT 10").fetchall()
+    return {"announcements": [dict(r) for r in rows]}
+
+@app.post("/api/admin/announcement")
+def admin_create_announcement(b: AnnouncementIn, admin=Depends(require_admin)):
+    body = (b.body or "").strip()
+    if len(body) < 2:
+        raise HTTPException(400, "Duyuru mesajı boş olamaz")
+    with closing(db()) as con, con:
+        con.execute("INSERT INTO announcements(title,body,created) VALUES(?,?,?)",
+                    ((b.title or "").strip()[:120], body[:2000], time.time()))
+    log_event(admin["id"], "announcement")
+    return {"ok": True}
+
+@app.delete("/api/admin/announcement/{aid}")
+def admin_delete_announcement(aid: int, admin=Depends(require_admin)):
+    with closing(db()) as con, con:
+        con.execute("DELETE FROM announcements WHERE id=?", (aid,))
+    return {"ok": True}
 
 @app.get("/api/leaderboard")
 def leaderboard():
