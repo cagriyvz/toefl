@@ -1,0 +1,18 @@
+# Render.com blueprint — ücretsiz katmanda backend + uygulama
+# Render panelinde "New → Blueprint" ile bu dosyayı seç (rootDir: toefl/backend).
+services:
+  - type: web
+    name: toefl-structure
+    runtime: python
+    rootDir: toefl/backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    # SQLite verisinin kalıcı olması için ücretsiz disk (1GB):
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: TOEFL_DB_DIR
+        value: /var/data

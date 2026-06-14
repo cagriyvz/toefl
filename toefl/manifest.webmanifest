@@ -1,0 +1,13 @@
+{
+  "name": "TOEFL Structure",
+  "short_name": "TOEFL",
+  "description": "TOEFL Structure & Written Expression çalışma platformu",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f1320",
+  "theme_color": "#0f1320",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
