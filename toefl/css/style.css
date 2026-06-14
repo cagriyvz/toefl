@@ -64,6 +64,10 @@ body.locked .topbar{display:none}
   padding:12px 18px;border-radius:30px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 #support-fab:hover{filter:brightness(1.08)}
 body.locked #support-fab{display:none}
+/* Tablet (iPad vb.): 'Sonraki soru' butonunun üstüne gelmesin diye sol-alta al */
+@media (min-width:561px) and (max-width:1024px){
+  #support-fab{left:14px;right:auto;bottom:84px;padding:10px 15px;font-size:13px;border-radius:24px}
+}
 
 /* Destek talep kartları (admin) */
 .tk-card{background:var(--panel);border:1px solid var(--line);border-left-width:4px;border-radius:12px;padding:14px 16px;margin-bottom:10px}
